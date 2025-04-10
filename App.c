@@ -1,3 +1,4 @@
+#include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <stdbool.h>
@@ -7,9 +8,9 @@
 #include "point.h"
 #include "helper.h"
 
-#define WINDOW_WIDTH (uint16_t)900
-#define WINDOW_HEIGHT (uint16_t)500
-#define LINE_THICKNESS (uint8_t)3
+#define WINDOW_WIDTH (uint16_t) 900
+#define WINDOW_HEIGHT (uint16_t) 500
+#define LINE_THICKNESS (uint8_t) 3
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
 
@@ -44,17 +45,21 @@ void handle_events(SDL_Renderer* renderer, SDL_Event* event, TotalData *Data, bo
                                 }
                                 break;
                         case SDL_MOUSEBUTTONDOWN:
-                                if (event->button.button == SDL_BUTTON_LEFT) {
-                                        Data->current_mode = MODE_DRAWING;
-                                        *update_renderer = true;
-                                        addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, true);
+                                switch (event->button.button) {
+                                        case SDL_BUTTON_LEFT:
+                                                Data->current_mode = MODE_DRAWING;
+                                                *update_renderer = true;
+                                                addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, true);
+                                                break;
                                 }
                                 break;
                         case SDL_MOUSEBUTTONUP:
-                                if (event->button.button == SDL_BUTTON_LEFT) {
-                                        Data->current_mode = MODE_NONE;
-                                        *update_renderer = true;
-                                        addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, false);
+                                switch (event->button.button) {
+                                        case SDL_BUTTON_LEFT:
+                                                Data->current_mode = MODE_NONE;
+                                                *update_renderer = true;
+                                                addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, false);
+                                                break;
                                 }
                                 break;
                         case SDL_MOUSEMOTION:
