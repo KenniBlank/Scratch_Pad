@@ -27,15 +27,18 @@ typedef struct {
         enum Mode current_mode;
 } TotalData;
 
-void handle_events(SDL_Renderer* renderer, SDL_Event* event, TotalData *Data, bool* app_running, bool* update_renderer) {
-        while (SDL_PollEvent(event)) {
-                switch (event->type) {
+void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, bool* update_renderer) {
+        static SDL_Event event;
+        static enum Mode current_mode;
+
+        while (SDL_PollEvent(&event)) {
+                switch (event.type) {
                         case SDL_QUIT:
                                 *app_running = false;
                                 break;
 
                         case SDL_KEYDOWN:
-                                switch (event->key.keysym.sym) {
+                                switch (event.key.keysym.sym) {
                                         case SDLK_ESCAPE:
                                                 *app_running = false;
                                                 break;
@@ -45,27 +48,33 @@ void handle_events(SDL_Renderer* renderer, SDL_Event* event, TotalData *Data, bo
                                 }
                                 break;
                         case SDL_MOUSEBUTTONDOWN:
-                                switch (event->button.button) {
+                                switch (event.button.button) {
                                         case SDL_BUTTON_LEFT:
-                                                Data->current_mode = MODE_DRAWING;
+                                                current_mode = Data->current_mode;
                                                 *update_renderer = true;
-                                                addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, true);
+                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, true);
                                                 break;
                                 }
                                 break;
                         case SDL_MOUSEBUTTONUP:
-                                switch (event->button.button) {
+                                switch (event.button.button) {
                                         case SDL_BUTTON_LEFT:
-                                                Data->current_mode = MODE_NONE;
                                                 *update_renderer = true;
-                                                addPoint(&Data->lines, event->button.x, event->button.y, LINE_THICKNESS, false);
+                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, false);
+                                                current_mode = MODE_NONE;
                                                 break;
                                 }
                                 break;
                         case SDL_MOUSEMOTION:
-                                if (Data->current_mode == MODE_DRAWING) {
-                                        *update_renderer = true;
-                                        addPoint(&Data->lines, event->motion.x, event->motion.y, LINE_THICKNESS, true);
+                                switch (current_mode) {
+                                        case MODE_NONE:
+                                                break;
+                                        case MODE_DRAWING:
+                                                *update_renderer = true;
+                                                addPoint(&Data->lines, event.motion.x, event.motion.y, LINE_THICKNESS, true);
+                                                break;
+                                        default: break;
+
                                 }
                                 break;
                 }
@@ -95,8 +104,6 @@ int main(void) {
                 bg_color = {15, 20, 25, 255}, // Background Color
                 white_color = {255, 255, 255, 255};
 
-        SDL_Event sdl_event;
-
         TotalData DATA_INIT_VALUE = {
                 .lines = {
                         .points = NULL,
@@ -114,8 +121,9 @@ int main(void) {
                 Data[i] = DATA_INIT_VALUE;
         }
 
+        Data[0].current_mode = MODE_DRAWING;
         while (app_is_running) {
-                handle_events(renderer, &sdl_event, &Data[0], &app_is_running, &update_renderer);
+                handle_events(renderer, &Data[0], &app_is_running, &update_renderer);
                 if (update_renderer) {
                         SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                         SDL_RenderClear(renderer);
