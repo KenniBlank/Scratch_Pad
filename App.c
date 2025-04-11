@@ -52,7 +52,13 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                                         case SDL_BUTTON_LEFT:
                                                 current_mode = Data->current_mode;
                                                 *update_renderer = true;
-                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, true);
+                                                switch (current_mode) {
+                                                        case MODE_DRAWING:
+                                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, true);
+                                                                break;
+                                                        default:
+                                                                break;
+                                                }
                                                 break;
                                 }
                                 break;
@@ -60,7 +66,13 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                                 switch (event.button.button) {
                                         case SDL_BUTTON_LEFT:
                                                 *update_renderer = true;
-                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, false);
+                                                switch (current_mode) {
+                                                        case MODE_DRAWING:
+                                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, false);
+                                                                break;
+                                                        default:
+                                                                break;
+                                                }
                                                 current_mode = MODE_NONE;
                                                 break;
                                 }
