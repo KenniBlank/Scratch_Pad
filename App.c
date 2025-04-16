@@ -1,16 +1,13 @@
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_video.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "point.h"
 #include "helper.h"
-
-#define WINDOW_WIDTH (uint16_t) 900
-#define WINDOW_HEIGHT (uint16_t) 500
-#define LINE_THICKNESS (uint8_t) 3
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
 
@@ -27,7 +24,18 @@ typedef struct {
         enum Mode current_mode;
 } TotalData;
 
-void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, bool* update_renderer) {
+void handle_events(
+        SDL_Window* window,
+        SDL_Renderer* renderer,
+        TotalData *Data,
+        SDL_Texture **staticLayer,
+        int* window_width,
+        int* window_height,
+        bool* app_running,
+        bool* update_renderer,
+        bool* rerender,
+        const uint8_t LINE_THICKNESS
+) {
         static SDL_Event event;
         static enum Mode current_mode;
 
@@ -35,6 +43,18 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                 switch (event.type) {
                         case SDL_QUIT:
                                 *app_running = false;
+                                break;
+
+                        case SDL_WINDOWEVENT:
+                                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                                        SDL_GetWindowSize(window, window_width, window_height);
+                                        *staticLayer = SDL_CreateTexture(
+                                                renderer,
+                                                SDL_PIXELFORMAT_RGBA8888,
+                                                SDL_TEXTUREACCESS_TARGET,
+                                                *window_width, *window_height
+                                        );
+                                }
                                 break;
 
                         case SDL_KEYDOWN:
@@ -57,6 +77,7 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                                                                 addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, true);
                                                                 break;
                                                         default:
+                                                                *rerender = true;
                                                                 break;
                                                 }
                                                 break;
@@ -71,6 +92,7 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                                                                 addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, false);
                                                                 break;
                                                         default:
+                                                                *rerender = true;
                                                                 break;
                                                 }
                                                 current_mode = MODE_NONE;
@@ -86,7 +108,6 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
                                                 addPoint(&Data->lines, event.motion.x, event.motion.y, LINE_THICKNESS, true);
                                                 break;
                                         default: break;
-
                                 }
                                 break;
                 }
@@ -94,26 +115,29 @@ void handle_events(SDL_Renderer* renderer, TotalData *Data, bool* app_running, b
 }
 
 int main(void) {
+        int WINDOW_WIDTH = 1366, WINDOW_HEIGHT = 768;
+        uint8_t LINE_THINKNESS = 3;
+
         SDL_Init(SDL_INIT_EVERYTHING);
 
         SDL_Window* window = SDL_CreateWindow(
                 "Scratch Pad",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                 WINDOW_WIDTH, WINDOW_HEIGHT,
-                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS
+                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE
         );
 
         SDL_Renderer* renderer = SDL_CreateRenderer(
                 window,
                 -1,
-                SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+                SDL_RENDERER_ACCELERATED
         );
 
         bool app_is_running = true;
         bool update_renderer = true;
 
         SDL_Color
-                bg_color = {15, 20, 25, 255}, // Background Color
+                bg_color = {0, 0, 0, 255}, // Background Color
                 white_color = {255, 255, 255, 255};
 
         TotalData DATA_INIT_VALUE = {
@@ -133,21 +157,56 @@ int main(void) {
                 Data[i] = DATA_INIT_VALUE;
         }
 
+        // Static Background Texture:
+        //      This is where all of lines are drawn so that no need to rerender eveything
+        SDL_Texture *staticLayer = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                WINDOW_WIDTH, WINDOW_HEIGHT
+        );
+
+        bool rerender = false;
+
         Data[0].current_mode = MODE_DRAWING;
         while (app_is_running) {
-                handle_events(renderer, &Data[0], &app_is_running, &update_renderer);
+                handle_events(
+                        window,
+                        renderer,
+                        &Data[0],
+                        &staticLayer,
+                        &WINDOW_WIDTH,
+                        &WINDOW_HEIGHT,
+                        &app_is_running,
+                        &update_renderer,
+                        &rerender,
+                        LINE_THINKNESS
+                );
+
                 if (update_renderer) {
+                        update_renderer = false;
+                        SDL_SetRenderTarget(renderer, staticLayer);
+                        if (rerender) {
+                                ReRenderLines(renderer, &Data[0].lines);
+                                rerender = false;
+                        } else {
+                                RenderLines(renderer, &Data[0].lines);
+                        }
+
+                        SDL_SetRenderTarget(renderer, NULL);
+
+                        // Clear Screen
                         SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                         SDL_RenderClear(renderer);
 
-                        ReRenderLines(renderer, &Data[0].lines);
-
-                        update_renderer = false;
-                        print_live_usage();
-
+                        // Copy static things back to renderer and render it
+                        SDL_RenderCopy(renderer, staticLayer, NULL, NULL);
                         SDL_RenderPresent(renderer);
-                }
 
+                        // Debug:
+                        print_live_usage();
+                }
+                SDL_Delay(16); // ~60 FPS
         }
 
         for (size_t i = 0; i < BUFFER_SIZE; i++) {
@@ -156,6 +215,7 @@ int main(void) {
                 }
         }
 
+        SDL_DestroyTexture(staticLayer);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();

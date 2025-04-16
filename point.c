@@ -136,10 +136,25 @@ void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, SDL_Color color) {
         }
 }
 
+uint16_t rendered_till = 0;
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA) {
         if (PA->pointCount != 0) {
                 for (uint16_t i = 0; i < PA -> pointCount - 1; i++) {
                         RenderLine(renderer, PA->points[i], PA->points[i + 1], PA->color);
                 }
+        }
+        rendered_till = PA->pointCount;
+}
+
+void RenderLines(SDL_Renderer* renderer,LinesArray* PA) {
+        if (PA->pointCount == 0 || PA == NULL) return;
+
+        if (rendered_till > PA->pointCount) {
+            rendered_till = PA->pointCount;
+        }
+
+
+        for (; rendered_till < PA->pointCount - 1; rendered_till++) {
+                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], PA->color);
         }
 }

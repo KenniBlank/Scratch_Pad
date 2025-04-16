@@ -12,7 +12,7 @@ App = "App"
 CFLAGS += $(DEBUGFLAGS)
 # CFLAGS += $(RELEASEFLAGS)
 
-all: run
+all: compile
 
 compile:
 	$(CC) $(CFiles) -o $(App) $(CFLAGS) $(LIBS)
@@ -20,6 +20,10 @@ compile:
 run: compile
 	./$(App)
 	@echo -e "\nProgram Return Value: $$?"
+
+move: compile
+	mv ./$(App) ~
+	echo -e "Successfully moved file to Home"
 
 clean:
 	@rm $(App)
