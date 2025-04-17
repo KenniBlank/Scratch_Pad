@@ -1,4 +1,6 @@
 #include "point.h"
+#include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <stdbool.h>
@@ -129,6 +131,18 @@ void better_line(SDL_Renderer* renderer, int x1, int y1, int x2, int y2, uint8_t
         }
 }
 
+Point Lerp(const Point a, const Point b, const float t) {
+        Point point = {
+                .connected_to_previous_point = true,
+                .line_thickness = (int) ((a.line_thickness + b.line_thickness) / 2),
+        };
+
+        point.x = a.x + (b.x - a.x) * t;
+        point.y = a.y + (b.y - a.y) * t;
+
+        return point;
+}
+
 void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, SDL_Color color) {
         if (p1.connected_to_previous_point && p2.connected_to_previous_point) {
                 SDL_SetRenderDrawColor(renderer, unpack_color(color));
@@ -137,16 +151,16 @@ void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, SDL_Color color) {
 }
 
 uint16_t rendered_till = 0;
-void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA) {
+void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, SDL_Color color) {
         if (PA->pointCount != 0) {
                 for (uint16_t i = 0; i < PA -> pointCount - 1; i++) {
-                        RenderLine(renderer, PA->points[i], PA->points[i + 1], PA->color);
+                        RenderLine(renderer, PA->points[i], PA->points[i + 1], color);
                 }
         }
         rendered_till = PA->pointCount;
 }
 
-void RenderLines(SDL_Renderer* renderer,LinesArray* PA) {
+void RenderLines(SDL_Renderer* renderer,LinesArray* PA, SDL_Color color) {
         if (PA->pointCount == 0 || PA == NULL) return;
 
         if (rendered_till > PA->pointCount) {
@@ -155,6 +169,6 @@ void RenderLines(SDL_Renderer* renderer,LinesArray* PA) {
 
 
         for (; rendered_till < PA->pointCount - 1; rendered_till++) {
-                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], PA->color);
+                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], color);
         }
 }

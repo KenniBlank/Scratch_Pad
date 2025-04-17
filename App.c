@@ -2,14 +2,30 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_video.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "point.h"
 #include "helper.h"
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
+
+#ifdef DEBUG
+    #define SAVE_LOCATION "Images/"
+#else
+    #define SAVE_LOCATION "Pictures/"
+#endif
+
+
+#define swap(a, b) \
+    do { \
+        typeof(*a) temp = *a; \
+        *a = *b; \
+        *b = temp; \
+    } while (0)
 
 enum Mode: uint8_t {
         MODE_NONE,
@@ -63,7 +79,7 @@ void handle_events(
                                                 *app_running = false;
                                                 break;
                                         case SDLK_s:
-                                                SaveRendererAsImage(renderer, "__image__", "images/");
+                                                SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
                                                 break;
                                 }
                                 break;
@@ -138,14 +154,13 @@ int main(void) {
 
         SDL_Color
                 bg_color = {0, 0, 0, 255}, // Background Color
-                white_color = {255, 255, 255, 255};
+                draw_color = {255, 255, 255, 255};
 
         TotalData DATA_INIT_VALUE = {
                 .lines = {
                         .points = NULL,
                         .pointCount = 0,
                         .pointCapacity = 0,
-                        .color = white_color
                 },
                 .current_mode = MODE_NONE
         };
@@ -185,12 +200,13 @@ int main(void) {
 
                 if (update_renderer) {
                         update_renderer = false;
+
                         SDL_SetRenderTarget(renderer, staticLayer);
                         if (rerender) {
-                                ReRenderLines(renderer, &Data[0].lines);
+                                ReRenderLines(renderer, &Data[0].lines, draw_color);
                                 rerender = false;
                         } else {
-                                RenderLines(renderer, &Data[0].lines);
+                                RenderLines(renderer, &Data[0].lines, draw_color);
                         }
 
                         SDL_SetRenderTarget(renderer, NULL);
@@ -203,8 +219,9 @@ int main(void) {
                         SDL_RenderCopy(renderer, staticLayer, NULL, NULL);
                         SDL_RenderPresent(renderer);
 
-                        // Debug:
-                        print_live_usage();
+                        #ifdef DEBUG
+                                print_live_usage();
+                        #endif
                 }
                 SDL_Delay(16); // ~60 FPS
         }

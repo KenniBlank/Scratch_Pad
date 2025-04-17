@@ -1,6 +1,6 @@
 #include "helper.h"
 
-#define DEBUG(msg, ...)\
+#define __DEBUG__(msg, ...)\
         printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
         fflush(stdout);
 
@@ -10,14 +10,14 @@ char* unique_name(char* folderLocation, char* prefix) {
 
         char* returnValue = malloc(sizeof(char) * len_return_value);
         if (!returnValue) {
-                DEBUG("Memory allocation failed");
+                __DEBUG__("Memory allocation failed");
                 return NULL;
         }
 
         // Ensure the folder exists
         struct stat st = {0};
         if (stat(folderLocation, &st) == -1) {
-                DEBUG("Folder doesn't exist");
+                __DEBUG__("Folder doesn't exist");
                 free(returnValue);
                 return NULL;
         }
@@ -27,14 +27,14 @@ char* unique_name(char* folderLocation, char* prefix) {
         snprintf(command, sizeof(command), "ls \"%s\" | wc -l", folderLocation);
         FILE *fp = popen(command, "r");
         if (!fp) {
-                DEBUG("Failed to run command to get file count");
+                __DEBUG__("Failed to run command to get file count");
                 free(returnValue);
                 return NULL;
         }
 
         int count = 0;
         if (fscanf(fp, "%d", &count) != 1) {
-                DEBUG("Failed to read file count");
+                __DEBUG__("Failed to read file count");
                 pclose(fp);
                 free(returnValue);
                 return NULL;
@@ -48,14 +48,14 @@ char* unique_name(char* folderLocation, char* prefix) {
 
                 fp = popen(command, "r");
                 if (!fp) {
-                        DEBUG("Failed to run command to check uniqueness");
+                        __DEBUG__("Failed to run command to check uniqueness");
                         free(returnValue);
                         return NULL;
                 }
 
                 int fileCount = 0;
                 if (fscanf(fp, "%d", &fileCount) != 1) {
-                        DEBUG("Failed to read the uniqueness check result");
+                        __DEBUG__("Failed to read the uniqueness check result");
                         pclose(fp);
                         free(returnValue);
                         return NULL;

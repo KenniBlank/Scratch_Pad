@@ -1,16 +1,20 @@
 CC = gcc
 
 CFLAGS = -std=gnu2x -Wall -Wextra -Wshadow
-DEBUGFLAGS = -g -DRELEASE -Werror
-RELEASEFLAGS = -O2
+LIBS = -lSDL2 -lSDL2_image -lm -lSDL2_ttf
 
-LIBS = -lSDL2 -lSDL2_image -lm -lSDL2_ttf -lGL
+DEBUGFLAGS = -g -DDEBUG -Werror
+RELEASEFLAGS = -O2 -DRELEASE
 
 CFiles = App.c point.c helper.c
 App = "App"
 
-CFLAGS += $(DEBUGFLAGS)
-# CFLAGS += $(RELEASEFLAGS)
+ifeq ($(build), RELEASE)
+	CFLAGS += $(RELEASEFLAGS)
+else
+	CFLAGS += $(DEBUGFLAGS)
+endif
+
 
 all: compile
 
