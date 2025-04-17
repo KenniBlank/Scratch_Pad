@@ -174,10 +174,7 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
         }
 }
 
-void PanPoints(Pan* pan, int32_t xrel, int32_t yrel) {
+void PanPoints(Pan* pan, float xrel, float yrel) {
         pan->x += xrel;
         pan->y += yrel;
-
-        printf("Pan\nX: %d, Y: %d\nXrel: %d, Yrel: %d\n", pan->x, pan->y, xrel, yrel);
-        fflush(stdout);
 }

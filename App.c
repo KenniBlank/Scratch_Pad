@@ -253,7 +253,7 @@ int main(void) {
                                 rerender = false;
                         } else {
                                 RenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
-                        }\
+                        }
 
                         SDL_SetRenderTarget(renderer, NULL);
 
