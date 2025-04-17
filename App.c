@@ -1,3 +1,4 @@
+#include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
@@ -12,6 +13,9 @@
 #include "helper.h"
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
+#define __DEBUG__(msg, ...)\
+        printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
+        fflush(stdout);
 
 #ifdef DEBUG
     #define SAVE_LOCATION "Images/"
@@ -64,12 +68,16 @@ void handle_events(
                         case SDL_WINDOWEVENT:
                                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                                         SDL_GetWindowSize(window, window_width, window_height);
-                                        *staticLayer = SDL_CreateTexture(
-                                                renderer,
-                                                SDL_PIXELFORMAT_RGBA8888,
-                                                SDL_TEXTUREACCESS_TARGET,
-                                                *window_width, *window_height
-                                        );
+                                        SDL_Texture* old = *staticLayer;
+
+                                        *staticLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, *window_width, *window_height);
+
+                                        // Copy content from old to new
+                                        SDL_SetRenderTarget(renderer, *staticLayer);
+                                        SDL_RenderCopy(renderer, old, NULL, NULL);
+                                        SDL_SetRenderTarget(renderer, NULL);
+
+                                        SDL_DestroyTexture(old);
                                 }
                                 break;
 
@@ -77,6 +85,12 @@ void handle_events(
                                 switch (event.key.keysym.sym) {
                                         case SDLK_ESCAPE:
                                                 *app_running = false;
+                                                break;
+                                        case SDLK_n:
+                                                Data->current_mode = MODE_NONE;
+                                                break;
+                                        case SDLK_d:
+                                                Data->current_mode = MODE_DRAWING;
                                                 break;
                                         case SDLK_s:
                                                 SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
@@ -184,6 +198,7 @@ int main(void) {
         bool rerender = false;
 
         Data[0].current_mode = MODE_DRAWING;
+
         while (app_is_running) {
                 handle_events(
                         window,
@@ -198,11 +213,24 @@ int main(void) {
                         LINE_THINKNESS
                 );
 
+                switch (Data[0].current_mode) {
+                        case MODE_DRAWING:
+                                SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
+                                break;
+                        default:
+                                SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
+                                break;
+                }
+
                 if (update_renderer) {
                         update_renderer = false;
 
                         SDL_SetRenderTarget(renderer, staticLayer);
                         if (rerender) {
+                                // Clear Screen
+                                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
+                                SDL_RenderClear(renderer);
+
                                 ReRenderLines(renderer, &Data[0].lines, draw_color);
                                 rerender = false;
                         } else {
