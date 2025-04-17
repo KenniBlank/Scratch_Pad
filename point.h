@@ -9,6 +9,10 @@
 #pragma once
 
 typedef struct {
+       int x, y;
+} Pan;
+
+typedef struct {
         int32_t x, y;
         uint8_t line_thickness;
         bool connected_to_previous_point;
@@ -21,5 +25,6 @@ typedef struct {
 } LinesArray;
 
 void addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line);
-void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, SDL_Color color);
-void RenderLines(SDL_Renderer* renderer,LinesArray* PA, SDL_Color color);
+void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
+void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color);
+void PanPoints(Pan* pan, int32_t xrel, int32_t yrel);

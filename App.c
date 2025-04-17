@@ -41,6 +41,7 @@ enum Mode: uint8_t {
 
 typedef struct {
         LinesArray lines;
+        Pan pan;
         enum Mode current_mode;
 } TotalData;
 
@@ -92,6 +93,9 @@ void handle_events(
                                         case SDLK_d:
                                                 Data->current_mode = MODE_DRAWING;
                                                 break;
+                                        case SDLK_p:
+                                                Data->current_mode = MODE_PAN;
+                                                break;
                                         case SDLK_s:
                                                 SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
                                                 break;
@@ -133,6 +137,11 @@ void handle_events(
                                 switch (current_mode) {
                                         case MODE_NONE:
                                                 break;
+                                        case MODE_PAN:
+                                                PanPoints(&Data->pan, event.motion.xrel, event.motion.yrel);
+                                                *update_renderer = true;
+                                                *rerender = true;
+                                                break;
                                         case MODE_DRAWING:
                                                 *update_renderer = true;
                                                 addPoint(&Data->lines, event.motion.x, event.motion.y, LINE_THICKNESS, true);
@@ -141,6 +150,20 @@ void handle_events(
                                 }
                                 break;
                 }
+        }
+}
+
+void handle_cursor_change(enum Mode current_mode) {
+        switch (current_mode) {
+                case MODE_DRAWING:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
+                        break;
+                case MODE_PAN:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND));
+                        break;
+                default:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
+                        break;
         }
 }
 
@@ -176,7 +199,9 @@ int main(void) {
                         .pointCount = 0,
                         .pointCapacity = 0,
                 },
-                .current_mode = MODE_NONE
+                .current_mode = MODE_NONE,
+                .pan.x = 0,
+                .pan.y = 0,
         };
 
         #define BUFFER_SIZE (uint8_t)100
@@ -213,14 +238,7 @@ int main(void) {
                         LINE_THINKNESS
                 );
 
-                switch (Data[0].current_mode) {
-                        case MODE_DRAWING:
-                                SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
-                                break;
-                        default:
-                                SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
-                                break;
-                }
+                handle_cursor_change(Data[0].current_mode);
 
                 if (update_renderer) {
                         update_renderer = false;
@@ -231,11 +249,11 @@ int main(void) {
                                 SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                                 SDL_RenderClear(renderer);
 
-                                ReRenderLines(renderer, &Data[0].lines, draw_color);
+                                ReRenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
                                 rerender = false;
                         } else {
-                                RenderLines(renderer, &Data[0].lines, draw_color);
-                        }
+                                RenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
+                        }\
 
                         SDL_SetRenderTarget(renderer, NULL);
 

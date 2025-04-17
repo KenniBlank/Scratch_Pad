@@ -5,6 +5,7 @@
 #include <SDL2/SDL_stdinc.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
@@ -143,24 +144,24 @@ Point Lerp(const Point a, const Point b, const float t) {
         return point;
 }
 
-void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, SDL_Color color) {
+void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color color) {
         if (p1.connected_to_previous_point && p2.connected_to_previous_point) {
                 SDL_SetRenderDrawColor(renderer, unpack_color(color));
-                better_line(renderer, p1.x, p1.y, p2.x, p2.y, (p1.line_thickness + p1.line_thickness) / 2, color);
+                better_line(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, (p1.line_thickness + p1.line_thickness) / 2, color);
         }
 }
 
 uint16_t rendered_till = 0;
-void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, SDL_Color color) {
+void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
                 for (uint16_t i = 0; i < PA -> pointCount - 1; i++) {
-                        RenderLine(renderer, PA->points[i], PA->points[i + 1], color);
+                        RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
                 }
         }
         rendered_till = PA->pointCount;
 }
 
-void RenderLines(SDL_Renderer* renderer,LinesArray* PA, SDL_Color color) {
+void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color) {
         if (PA->pointCount == 0 || PA == NULL) return;
 
         if (rendered_till > PA->pointCount) {
@@ -169,6 +170,14 @@ void RenderLines(SDL_Renderer* renderer,LinesArray* PA, SDL_Color color) {
 
 
         for (; rendered_till < PA->pointCount - 1; rendered_till++) {
-                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], color);
+                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], pan, color);
         }
+}
+
+void PanPoints(Pan* pan, int32_t xrel, int32_t yrel) {
+        pan->x += xrel;
+        pan->y += yrel;
+
+        printf("Pan\nX: %d, Y: %d\nXrel: %d, Yrel: %d\n", pan->x, pan->y, xrel, yrel);
+        fflush(stdout);
 }
