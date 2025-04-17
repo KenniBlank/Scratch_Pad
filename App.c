@@ -108,7 +108,7 @@ void handle_events(
                                                 *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING:
-                                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, true);
+                                                                addPoint(&Data->lines, event.button.x  - Data->pan.x, event.button.y  - Data->pan.y, LINE_THICKNESS, true);
                                                                 break;
                                                         default:
                                                                 *rerender = true;
@@ -123,7 +123,7 @@ void handle_events(
                                                 *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING:
-                                                                addPoint(&Data->lines, event.button.x, event.button.y, LINE_THICKNESS, false);
+                                                                addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
                                                                 break;
                                                         default:
                                                                 *rerender = true;
@@ -144,7 +144,7 @@ void handle_events(
                                                 break;
                                         case MODE_DRAWING:
                                                 *update_renderer = true;
-                                                addPoint(&Data->lines, event.motion.x, event.motion.y, LINE_THICKNESS, true);
+                                                addPoint(&Data->lines, event.motion.x - Data->pan.x, event.motion.y - Data->pan.y, LINE_THICKNESS, true);
                                                 break;
                                         default: break;
                                 }
