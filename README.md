@@ -42,3 +42,25 @@ General:
 - Order largest to smallest in struct
 - Use Enums to set which mode
 - Avoid/DON'T use strings
+
+
+## Ramer DouglasPeucker Algorithm
+```
+function DouglasPeucker(PointList, epsilon):
+    start = PointList[0]
+    end = PointList[-1]
+
+    # Find the point furthest from the line start–end
+    for point in PointList[1:-1]:
+        d = perpendicular distance from point to line(start, end)
+        track max d and point
+
+    if max_distance > epsilon:
+        # Recursive step
+        left = DouglasPeucker(start to furthest_point)
+        right = DouglasPeucker(furthest_point to end)
+
+        return left[:-1] + right  # combine, avoid duplicate
+    else:
+        return [start, end]
+```

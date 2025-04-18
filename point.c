@@ -138,6 +138,7 @@ Point Lerp(const Point a, const Point b, const float t) {
                 .line_thickness = (int) ((a.line_thickness + b.line_thickness) / 2),
         };
 
+
         point.x = a.x + (b.x - a.x) * t;
         point.y = a.y + (b.y - a.y) * t;
 
@@ -168,9 +169,9 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
             rendered_till = PA->pointCount;
         }
 
-
-        for (; rendered_till < PA->pointCount - 1; rendered_till++) {
+        while (rendered_till < PA->pointCount - 1) {
                 RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], pan, color);
+                rendered_till ++;
         }
 }
 

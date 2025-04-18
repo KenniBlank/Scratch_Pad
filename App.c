@@ -2,6 +2,7 @@
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
@@ -143,8 +144,9 @@ void handle_events(
                                                 *rerender = true;
                                                 break;
                                         case MODE_DRAWING:
-                                                *update_renderer = true;
                                                 addPoint(&Data->lines, event.motion.x - Data->pan.x, event.motion.y - Data->pan.y, LINE_THICKNESS, true);
+
+                                                *update_renderer = true;
                                                 break;
                                         default: break;
                                 }
@@ -161,8 +163,10 @@ void handle_cursor_change(enum Mode current_mode) {
                 case MODE_PAN:
                         SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND));
                         break;
-                default:
+                case MODE_NONE:
                         SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
+                        break;
+                default:
                         break;
         }
 }
@@ -180,11 +184,19 @@ int main(void) {
                 SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE
         );
 
-        SDL_Renderer* renderer = SDL_CreateRenderer(
-                window,
-                -1,
-                SDL_RENDERER_ACCELERATED
-        );
+        #ifdef DEBUG
+                SDL_Renderer* renderer = SDL_CreateRenderer(
+                        window,
+                        -1,
+                        SDL_RENDERER_ACCELERATED
+                );
+        #else
+                SDL_Renderer* renderer = SDL_CreateRenderer(
+                        window,
+                        -1,
+                        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+                );
+        #endif
 
         bool app_is_running = true;
         bool update_renderer = true;
@@ -269,7 +281,9 @@ int main(void) {
                                 print_live_usage();
                         #endif
                 }
-                SDL_Delay(16); // ~60 FPS
+                #ifdef DEBUG
+                        SDL_Delay(16); // ~60 FPS
+                #endif
         }
 
         for (size_t i = 0; i < BUFFER_SIZE; i++) {

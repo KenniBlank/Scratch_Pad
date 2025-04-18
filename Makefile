@@ -26,8 +26,8 @@ run: compile
 	@echo -e "\nProgram Return Value: $$?"
 
 move: compile
-	mv ./$(App) ~
-	echo -e "Successfully moved file to Home"
+	@mv ./$(App) ~
+	@echo -e "Successfully moved file to Home"
 
 clean:
 	@rm $(App)
