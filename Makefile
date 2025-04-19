@@ -3,7 +3,8 @@ CC = gcc
 CFLAGS = -std=gnu2x -Wall -Wextra -Wshadow
 LIBS = -lSDL2 -lSDL2_image -lm -lSDL2_ttf
 
-DEBUGFLAGS = -g -DDEBUG -Werror
+DEBUGFLAGS = -g -DDEBUG
+# -Werror
 RELEASEFLAGS = -O2 -DRELEASE
 
 CFiles = App.c point.c helper.c

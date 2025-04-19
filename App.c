@@ -81,6 +81,7 @@ void handle_events(
 
                                         SDL_DestroyTexture(old);
                                 }
+                                *update_renderer = true;
                                 break;
 
                         case SDL_KEYDOWN:
@@ -197,6 +198,8 @@ int main(void) {
                         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
                 );
         #endif
+
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
         bool app_is_running = true;
         bool update_renderer = true;

@@ -3,6 +3,7 @@
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -51,104 +52,92 @@ void addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool
         }
 }
 
-
-// Set pixel with intensity blending
 void setPixel(SDL_Renderer* renderer, int x, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 a, float intensity) {
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, r, g, b, (Uint8)(a * intensity));
         SDL_RenderDrawPoint(renderer, x, y);
 }
 
-// Improved Wu's Anti-Aliased Line Algorithm with Thickness
-void better_line(SDL_Renderer* renderer, int x1, int y1, int x2, int y2, uint8_t thickness, SDL_Color color) {
-        int steep = abs(y2 - y1) > abs(x2 - x1);
+float fractionalPart(float x) {
+        return x - floorf(x);
+}
+
+float rfpart(float x) {
+        return 1.0f - fractionalPart(x);
+}
+
+// Wu's Algorithm: Wikipedia
+void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Color color) {
+        bool steep = abs(y1 - y0) > abs(x1 - x0);
+
+        // Swap if the line is steep
+        if (steep) {
+                swap(&x0, &y0);
+                swap(&x1, &y1);
+        }
+
+        // Ensure x0 < x1
+        if (x0 > x1) {
+                swap(&x0, &x1);
+                swap(&y0, &y1);
+        }
+
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float gradient = (dx == 0.0f) ? 1.0f : dy / dx;
+
+        // First endpoint calculation
+        float xend = x0;
+        float yend = y0 + gradient * (xend - x0);
+        float xgap = rfpart(x0 + 0.5f);
+        int xpxl1 = (int)xend;
+        int ypxl1 = (int)floorf(yend);
 
         if (steep) {
-                swap(&x1, &y1);
-                swap(&x2, &y2);
+                setPixel(renderer, ypxl1, xpxl1, unpack_color(color), rfpart(yend) * xgap);
+                setPixel(renderer, ypxl1 + 1, xpxl1, unpack_color(color), fractionalPart(yend) * xgap);
+        } else {
+                setPixel(renderer, xpxl1, ypxl1, unpack_color(color), rfpart(yend) * xgap);
+                setPixel(renderer, xpxl1, ypxl1 + 1, unpack_color(color), fractionalPart(yend) * xgap);
         }
 
-        if (x1 > x2) {
-                swap(&x1, &x2);
-                swap(&y1, &y2);
+        float intery = yend + gradient;
+
+        // Second endpoint calculation
+        xend = x1;
+        yend = y1 + gradient * (xend - x1);
+        xgap = fractionalPart(x1 + 0.5f);
+        int xpxl2 = (int)xend;
+        int ypxl2 = (int)floorf(yend);
+
+        if (steep) {
+                setPixel(renderer, ypxl2, xpxl2, unpack_color(color), rfpart(yend) * xgap);
+                setPixel(renderer, ypxl2 + 1, xpxl2, unpack_color(color), fractionalPart(yend) * xgap);
+        } else {
+                setPixel(renderer, xpxl2, ypxl2, unpack_color(color), rfpart(yend) * xgap);
+                setPixel(renderer, xpxl2, ypxl2 + 1, unpack_color(color), fractionalPart(yend) * xgap);
         }
 
-        float dx = (float)(x2 - x1);
-        float dy = (float)(y2 - y1);
-        float gradient = (dx == 0.0) ? 1.0 : dy / dx;
-
-        // Calculate perpendicular gradient for thickness
-        float perpendicular_gradient = (gradient == 0.0) ? 1.0 : -1.0 / gradient;
-
-        // Loop through a range of thickness levels to draw a thick line
-        for (int t = -(thickness / 2); t <= (thickness / 2); t++) {
-                // Calculate offsets for the current thickness level
-                float offset_x = t * cos(atan(perpendicular_gradient));
-                float offset_y = t * sin(atan(perpendicular_gradient));
-
-                // Adjust the starting and ending points based on the thickness offset
-                int adjusted_x1 = x1 + offset_x;
-                int adjusted_y1 = y1 + offset_y;
-                int adjusted_x2 = x2 + offset_x;
-                int adjusted_y2 = y2 + offset_y;
-
-                // Recalculate gradient for the adjusted line
-                float adjusted_dx = adjusted_x2 - adjusted_x1;
-                float adjusted_dy = adjusted_y2 - adjusted_y1;
-                float adjusted_gradient = (adjusted_dx == 0.0) ? 1.0 : adjusted_dy / adjusted_dx;
-                float intery = adjusted_y1 + adjusted_gradient * (adjusted_x1 - x1);
-
-                // Draw the first pixel
-                int xend = adjusted_x1;
-                int yend = round(adjusted_y1);
-                float xgap = 1 - (adjusted_x1 + 0.5 - floor(adjusted_x1 + 0.5));
-                int xpxl1 = xend;
-                int ypxl1 = yend;
+        // Main loop
+        for (int x = xpxl1 + 1; x < xpxl2; x++) {
+                int y = (int)floorf(intery);
+                float fpart = fractionalPart(intery);
 
                 if (steep) {
-                        setPixel(renderer, ypxl1, xpxl1, unpack_color(color), (1 - (intery - floor(intery))) * xgap);
-                        setPixel(renderer, ypxl1 + 1, xpxl1, unpack_color(color), (intery - floor(intery)) * xgap);
+                        setPixel(renderer, y, x, unpack_color(color), 1.0f - fpart);
+                        setPixel(renderer, y + 1, x, unpack_color(color), fpart);
                 } else {
-                        setPixel(renderer, xpxl1, ypxl1, unpack_color(color), (1 - (intery - floor(intery))) * xgap);
-                        setPixel(renderer, xpxl1, ypxl1 + 1, unpack_color(color), (intery - floor(intery)) * xgap);
+                        setPixel(renderer, x, y, unpack_color(color), 1.0f - fpart);
+                        setPixel(renderer, x, y + 1, unpack_color(color), fpart);
                 }
 
-                intery += adjusted_gradient;
-
-                // Draw the middle pixels
-                for (int x = xpxl1 + 1; x < adjusted_x2; x++) {
-                        int y = floor(intery);
-                        float f = intery - y;
-
-                        if (steep) {
-                                setPixel(renderer, y, x, unpack_color(color), 1 - f);
-                                setPixel(renderer, y + 1, x, unpack_color(color), f);
-                        } else {
-                                setPixel(renderer, x, y, unpack_color(color), 1 - f);
-                                setPixel(renderer, x, y + 1, unpack_color(color), f);
-                        }
-                        intery += adjusted_gradient;
-                }
+                intery += gradient;
         }
 }
 
-Point Lerp(const Point a, const Point b, const float t) {
-        Point point = {
-                .connected_to_previous_point = true,
-                .line_thickness = (int) ((a.line_thickness + b.line_thickness) / 2),
-        };
-
-
-        point.x = a.x + (b.x - a.x) * t;
-        point.y = a.y + (b.y - a.y) * t;
-
-        return point;
-}
 
 void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color color) {
         if (p1.connected_to_previous_point && p2.connected_to_previous_point) {
-                SDL_SetRenderDrawColor(renderer, unpack_color(color));
-                better_line(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, (p1.line_thickness + p1.line_thickness) / 2, color);
+                BetterLine(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, color);
         }
 }
 
