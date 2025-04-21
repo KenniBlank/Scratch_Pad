@@ -83,7 +83,7 @@ void RDP(Point* points, uint16_t line_start_index, uint16_t line_end_index, doub
                 }
         }
 
-        if (maxDistance > epsilon && index != -1) {
+        if (maxDistance >= epsilon && index != -1) {
                 keep_indexes[index - line_start_index] = true;
                 RDP(points, line_start_index, index, epsilon, keep_indexes);
                 RDP(points, index, line_end_index, epsilon, keep_indexes);
@@ -99,16 +99,9 @@ void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_i
         bool *keep_indexes = calloc(total_range_of_points, sizeof(bool));
 
         RDP(PA->points, line_start_index, line_end_index, epsilon, keep_indexes);
-
-        int temp = line_start_index;
         for (int i = 0; i < total_range_of_points; i++) {
-                if (keep_indexes[i]) {
-                        PA->points[temp] = PA->points[line_start_index + i];
-                        temp++;
-                }
+                printf("%d\n", keep_indexes[i]);
         }
-
-        PA->pointCount = PA->pointCount - line_start_index + (temp - line_start_index);
 
         free(keep_indexes);
 }
@@ -196,8 +189,9 @@ void handle_events(
                                                         case MODE_DRAWING: {
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
 
-                                                                        double epsilon = 0.0f;
+                                                                        double epsilon = 5.0f;
                                                                         OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, epsilon);
+                                                                        *rerender = true;
                                                                         break;
                                                                 }
                                                         default:
