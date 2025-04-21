@@ -1,3 +1,4 @@
+#include <SDL2/SDL_config_unix.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_render.h>
@@ -8,6 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "point.h"
@@ -24,6 +26,7 @@
     #define SAVE_LOCATION "Pictures/"
 #endif
 
+#define BUFFER_SIZE (uint8_t)100
 
 #define swap(a, b) \
     do { \
@@ -46,6 +49,70 @@ typedef struct {
         enum Mode current_mode;
 } TotalData;
 
+double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
+        double dx = lineEnd.x - lineStart.x;
+        double dy = lineEnd.y - lineStart.y;
+
+        if (dx == 0 && dy == 0) {
+                dx = pt.x - lineStart.x;
+                dy = pt.y - lineStart.y;
+                return sqrt(dx * dx + dy * dy);
+        }
+
+        double num = fabs(dy * pt.x - dx * pt.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
+        double den = sqrt(dx * dx + dy * dy);
+        return num / den;
+}
+
+void RDP(Point* points, uint16_t line_start_index, uint16_t line_end_index, double epsilon, bool* keep_indexes) {
+        // Base case
+        if (line_end_index <= line_start_index + 1) {
+                keep_indexes[line_start_index - line_start_index] = true;
+                keep_indexes[line_end_index - line_start_index] = true;
+                return;
+        }
+
+        double maxDistance = 0.0;
+        int index = -1;
+
+        for (int i = line_start_index + 1; i < line_end_index; i++) { // No need to check distance for end and start points :)
+                double dist = perpendicularDistance(points[i], points[line_start_index], points[line_end_index]);
+                if (dist > maxDistance) {
+                        maxDistance = dist;
+                        index = i;
+                }
+        }
+
+        if (maxDistance > epsilon && index != -1) {
+                keep_indexes[index - line_start_index] = true;
+                RDP(points, line_start_index, index, epsilon, keep_indexes);
+                RDP(points, index, line_end_index, epsilon, keep_indexes);
+        } else {
+                // Endpoints should be kept
+                keep_indexes[line_start_index - line_start_index] = true;
+                keep_indexes[line_end_index - line_start_index] = true;
+        }
+}
+
+void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index, double epsilon) {
+        int total_range_of_points = PA->pointCount - line_start_index + 1;
+        bool *keep_indexes = calloc(total_range_of_points, sizeof(bool));
+
+        RDP(PA->points, line_start_index, line_end_index, epsilon, keep_indexes);
+
+        int temp = line_start_index;
+        for (int i = 0; i < total_range_of_points; i++) {
+                if (keep_indexes[i]) {
+                        PA->points[temp] = PA->points[line_start_index + i];
+                        temp++;
+                }
+        }
+
+        PA->pointCount = PA->pointCount - line_start_index + (temp - line_start_index);
+
+        free(keep_indexes);
+}
+
 void handle_events(
         SDL_Window* window,
         SDL_Renderer* renderer,
@@ -60,6 +127,7 @@ void handle_events(
 ) {
         static SDL_Event event;
         static enum Mode current_mode;
+        static uint16_t line_start_index;
 
         while (SDL_PollEvent(&event)) {
                 switch (event.type) {
@@ -111,6 +179,7 @@ void handle_events(
                                                 switch (current_mode) {
                                                         case MODE_DRAWING:
                                                                 addPoint(&Data->lines, event.button.x  - Data->pan.x, event.button.y  - Data->pan.y, LINE_THICKNESS, true);
+                                                                line_start_index = Data->lines.pointCount - 1;
                                                                 break;
                                                         default:
                                                                 *rerender = true;
@@ -124,9 +193,13 @@ void handle_events(
                                         case SDL_BUTTON_LEFT:
                                                 *update_renderer = true;
                                                 switch (current_mode) {
-                                                        case MODE_DRAWING:
-                                                                addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
-                                                                break;
+                                                        case MODE_DRAWING: {
+                                                                        addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
+
+                                                                        double epsilon = 0.0f;
+                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, epsilon);
+                                                                        break;
+                                                                }
                                                         default:
                                                                 *rerender = true;
                                                                 break;
@@ -173,7 +246,7 @@ void handle_cursor_change(enum Mode current_mode) {
 }
 
 int main(void) {
-        int WINDOW_WIDTH = 1366, WINDOW_HEIGHT = 768;
+        int WINDOW_WIDTH = 900, WINDOW_HEIGHT = 500;
         uint8_t LINE_THINKNESS = 3;
 
         SDL_Init(SDL_INIT_EVERYTHING);
@@ -182,7 +255,7 @@ int main(void) {
                 "Scratch Pad",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                 WINDOW_WIDTH, WINDOW_HEIGHT,
-                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE
+                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP
         );
 
         #ifdef DEBUG
@@ -219,7 +292,6 @@ int main(void) {
                 .pan.y = 0,
         };
 
-        #define BUFFER_SIZE (uint8_t)100
 
         TotalData Data[BUFFER_SIZE];
         for (uint8_t i = 0; i < BUFFER_SIZE; i++) {
@@ -281,7 +353,7 @@ int main(void) {
                         SDL_RenderPresent(renderer);
 
                         #ifdef DEBUG
-                                print_live_usage();
+                                // print_live_usage();
                         #endif
                 }
                 #ifdef DEBUG

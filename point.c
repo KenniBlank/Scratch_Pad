@@ -18,38 +18,44 @@
         } while (0)
 #define POINTS_THRESHOLD 1
 
-void addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line) {
+int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line) {
         if (PA->pointCapacity >= UINT16_MAX) {
-                return;
+                return 1;
         }
 
         if (PA->pointCount >= PA->pointCapacity) {
-                PA->pointCapacity = (PA->pointCapacity == 0) ? 1 : PA->pointCapacity * 2;
+                uint16_t new_capacity = (PA->pointCapacity == 0) ? 1 : PA->pointCapacity * 2;
 
-                if (PA->pointCapacity >= UINT16_MAX) {
-                        PA->pointCapacity = UINT16_MAX;
+                if (new_capacity >= UINT16_MAX) {
+                        new_capacity = UINT16_MAX;
                 }
 
-                Point* temp = realloc(PA->points, PA->pointCapacity * sizeof(Point));
+                Point* temp = realloc(PA->points, new_capacity * sizeof(Point));
                 if (!temp) {
                         fprintf(stderr, "Memory allocation failed!\n");
-                        free(PA->points); // Free existing memory
-                        exit(1);
+                        return 1;
                 }
                 PA->points = temp;
+                PA->pointCapacity = new_capacity;
         }
 
         bool add_point = true;
 
-        add_point = !connected_to_prev_line ? true: sqrt((PA->points[PA->pointCount - 1].x - x) * (PA->points[PA->pointCount - 1].x - x) + (PA->points[PA->pointCount - 1].y - y) * (PA->points[PA->pointCount - 1].y - y)) > POINTS_THRESHOLD ? true: false;
+        if (connected_to_prev_line && PA->pointCount > 0) {
+                int32_t dx = PA->points[PA->pointCount - 1].x - x;
+                int32_t dy = PA->points[PA->pointCount - 1].y - y;
+                add_point = (dx * dx + dy * dy) > (POINTS_THRESHOLD * POINTS_THRESHOLD);
+        }
 
-        if (add_point){
+        if (add_point) {
                 PA->points[PA->pointCount].x = x;
                 PA->points[PA->pointCount].y = y;
                 PA->points[PA->pointCount].connected_to_previous_point = connected_to_prev_line;
                 PA->points[PA->pointCount].line_thickness = line_thickness;
                 PA->pointCount++;
         }
+
+        return 0;
 }
 
 void setPixel(SDL_Renderer* renderer, int x, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 a, float intensity) {
@@ -134,7 +140,6 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
         }
 }
 
-
 void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color color) {
         if (p1.connected_to_previous_point && p2.connected_to_previous_point) {
                 BetterLine(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, color);
@@ -144,7 +149,7 @@ void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color c
 uint16_t rendered_till = 0;
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
-                for (uint16_t i = 0; i < PA -> pointCount - 1; i++) {
+                for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
                         RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
                 }
         }
@@ -160,7 +165,7 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
 
         while (rendered_till < PA->pointCount - 1) {
                 RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], pan, color);
-                rendered_till ++;
+                rendered_till += 1;
         }
 }
 

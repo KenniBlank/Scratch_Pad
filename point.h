@@ -24,7 +24,7 @@ typedef struct {
         uint16_t pointCapacity;      // Max capacity of the array
 } LinesArray;
 
-void addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line);
+int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line);
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
 void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color);
 void PanPoints(Pan* pan, float xrel, float yrel);
