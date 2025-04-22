@@ -5,10 +5,11 @@ Scratch Pad is an application in which you can sketch your ideas roughly. It is 
 This is the better repository of my [scratch-pad](https://github.com/KenniBlank/scratch-pad) application.
 
 # TODO:
-- [ ] Line Points Noise Reduction
+- [X] Line Points Noise Reduction
 - [ ] Curve Fitting
 - [ ] Rough Rendering
 - [ ] Deadzone technique, inertia, averaging
+- [ ] Cubic Bezier to smoothen line
 
 ## Notes:
 

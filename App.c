@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "point.h"
 #include "helper.h"
@@ -37,10 +38,11 @@
 
 enum Mode: uint8_t {
         MODE_NONE,
+        MODE_TYPING,
         MODE_DRAWING,
         MODE_PAN,
         MODE_ERASOR,
-        MODE_TYPING
+        MODE_LINE_ERASOR,
 };
 
 typedef struct {
@@ -96,11 +98,21 @@ void handle_events(
                                         case SDLK_n:
                                                 Data->current_mode = MODE_NONE;
                                                 break;
+                                        case SDLK_t:
+                                                Data->current_mode = MODE_TYPING;
+                                                break;
                                         case SDLK_d:
                                                 Data->current_mode = MODE_DRAWING;
                                                 break;
                                         case SDLK_p:
                                                 Data->current_mode = MODE_PAN;
+                                                break;
+                                        case SDLK_e:
+                                                if (Data->current_mode == MODE_ERASOR) {
+                                                        Data->current_mode = MODE_LINE_ERASOR;
+                                                } else {
+                                                        Data->current_mode = MODE_ERASOR;
+                                                }
                                                 break;
                                         case SDLK_s:
                                                 SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
@@ -117,6 +129,8 @@ void handle_events(
                                                                 addPoint(&Data->lines, event.button.x  - Data->pan.x, event.button.y  - Data->pan.y, LINE_THICKNESS, true);
                                                                 line_start_index = Data->lines.pointCount - 1;
                                                                 break;
+                                                        case MODE_ERASOR:
+                                                                break;
                                                         default:
                                                                 *rerender = true;
                                                                 break;
@@ -132,7 +146,7 @@ void handle_events(
                                                         case MODE_DRAWING: {
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, true);
 
-                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, 50.0f);
+                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, 10.0f);
 
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
                                                                         break;
@@ -168,16 +182,21 @@ void handle_events(
 
 void handle_cursor_change(enum Mode current_mode) {
         switch (current_mode) {
+                case MODE_NONE:
+                case MODE_TYPING:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
+                        break;
                 case MODE_DRAWING:
                         SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
                         break;
                 case MODE_PAN:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL));
+                        break;
+                case MODE_ERASOR:
                         SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND));
                         break;
-                case MODE_NONE:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
-                        break;
-                default:
+                case MODE_LINE_ERASOR:
+                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO));
                         break;
         }
 }
