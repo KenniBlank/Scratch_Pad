@@ -4,6 +4,17 @@
         printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
         fflush(stdout);
 
+SDL_Texture* LoadImageAsTexture(const char* path, SDL_Renderer* renderer) {
+        SDL_Surface* surface = IMG_Load(path);
+        if (!surface) {
+                printf("Image Load Error: %s\n", IMG_GetError());
+                return NULL;
+        }
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        return texture;
+}
+
 char* unique_name(char* folderLocation, char* prefix) {
         // Calculate a safe length for returnValue (prefix + count + extension)
         size_t len_return_value = strlen(folderLocation) + strlen(prefix) + 10;

@@ -15,7 +15,7 @@ typedef struct {
 typedef struct {
         int32_t x, y;
         uint8_t line_thickness;
-        bool connected_to_previous_point;
+        bool connected_to_next_point;
 } Point;
 
 typedef struct {

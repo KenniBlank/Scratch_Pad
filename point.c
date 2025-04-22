@@ -50,7 +50,7 @@ int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool 
         if (add_point) {
                 PA->points[PA->pointCount].x = x;
                 PA->points[PA->pointCount].y = y;
-                PA->points[PA->pointCount].connected_to_previous_point = connected_to_prev_line;
+                PA->points[PA->pointCount].connected_to_next_point = connected_to_prev_line;
                 PA->points[PA->pointCount].line_thickness = line_thickness;
                 PA->pointCount++;
         }
@@ -141,7 +141,7 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
 }
 
 void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color color) {
-        if (p1.connected_to_previous_point && p2.connected_to_previous_point) {
+        if (p1.connected_to_next_point && p2.connected_to_next_point) {
                 BetterLine(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, color);
         }
 }
