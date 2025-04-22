@@ -88,20 +88,26 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep
 }
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index, double epsilon) {
-        int n = PA->pointCount;
-        int* keep = calloc(n, sizeof(int));
-        keep[0] = 1;
-        keep[n - 1] = 1;
+        int* keep = calloc(PA->pointCount, sizeof(int));
+        keep[line_start_index] = 1;
+        keep[line_end_index] = 1;
 
         douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
 
-        printf("Simplified Points:\n");
-        for (int i = 0; i < n; ++i) {
+        printf("Point Count: %d\n", PA->pointCount);
+        uint16_t temp = 0;
+
+        for (int i = line_start_index; i <= line_end_index; ++i) {
                 if (keep[i]) {
-                        printf("%d. (%d, %d)\n", i, PA->points[i].x, PA->points[i].y);
+                        PA->points[line_start_index + temp] = PA->points[i];
+                        temp += 1;
                 }
         }
 
+        PA->pointCount = line_start_index + temp;
+        printf("Point Count: %d\n", PA->pointCount);
+
+        fflush(stdout);
         free(keep);
 }
 
@@ -186,11 +192,12 @@ void handle_events(
                                                 *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING: {
+                                                                        addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, true);
+
+                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, 5.0f);
+
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
 
-                                                                        double epsilon = 2.0f;
-                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, epsilon);
-                                                                        *rerender = true;
                                                                         break;
                                                                 }
                                                         default:
