@@ -146,26 +146,25 @@ void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color c
         }
 }
 
-uint16_t rendered_till = 0;
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
                 for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
                         RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
                 }
         }
-        rendered_till = PA->pointCount;
+        PA->rendered_till = PA->pointCount;
 }
 
 void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color) {
         if (PA->pointCount == 0 || PA == NULL) return;
 
-        if (rendered_till > PA->pointCount) {
-            rendered_till = PA->pointCount;
+        if (PA->rendered_till > PA->pointCount) {
+            PA->rendered_till = PA->pointCount;
         }
 
-        while (rendered_till < PA->pointCount - 1) {
-                RenderLine(renderer, PA->points[rendered_till], PA->points[rendered_till + 1], pan, color);
-                rendered_till += 1;
+        while (PA->rendered_till < PA->pointCount - 1) {
+                RenderLine(renderer, PA->points[PA->rendered_till], PA->points[PA->rendered_till + 1], pan, color);
+                PA->rendered_till += 1;
         }
 }
 
@@ -228,6 +227,6 @@ void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_i
         }
 
         PA->pointCount = line_start_index + temp;
-        rendered_till = PA->pointCount;
+        PA->rendered_till = PA->pointCount;
         free(keep);
 }

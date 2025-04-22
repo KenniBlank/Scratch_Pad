@@ -22,6 +22,7 @@ typedef struct {
         Point *points;  // Pointer to dynamic array of points
         uint16_t pointCount; // Current number of points
         uint16_t pointCapacity;      // Max capacity of the array
+        uint16_t rendered_till;
 } LinesArray;
 
 int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line);
