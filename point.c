@@ -173,3 +173,61 @@ void PanPoints(Pan* pan, float xrel, float yrel) {
         pan->x += xrel;
         pan->y += yrel;
 }
+
+double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
+        double dx = lineEnd.x - lineStart.x;
+        double dy = lineEnd.y - lineStart.y;
+
+        if (dx == 0 && dy == 0) {
+                dx = pt.x - lineStart.x;
+                dy = pt.y - lineStart.y;
+                return sqrt(dx * dx + dy * dy);
+        }
+
+        double num = fabs(dy * pt.x - dx * pt.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
+        double den = sqrt(dx * dx + dy * dy);
+        return num / den;
+}
+
+void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep) {
+        if (end <= start + 1) {
+                return;
+        }
+
+        double maxDist = 0.0;
+        int index = start;
+
+        for (int i = start + 1; i < end; ++i) {
+                double dist = perpendicularDistance(points[i], points[start], points[end]);
+                if (dist > maxDist) {
+                        maxDist = dist;
+                        index = i;
+                }
+        }
+
+        if (maxDist > epsilon) {
+                keep[index] = 1;
+                douglasPeucker(points, start, index, epsilon, keep);
+                douglasPeucker(points, index, end, epsilon, keep);
+        }
+}
+
+void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index, double epsilon) {
+        int* keep = calloc(PA->pointCount, sizeof(int));
+        keep[line_start_index] = 1;
+        keep[line_end_index] = 1;
+
+        douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
+
+        uint16_t temp = 0;
+        for (int i = line_start_index; i <= line_end_index; ++i) {
+                if (keep[i]) {
+                        PA->points[line_start_index + temp] = PA->points[i];
+                        temp += 1;
+                }
+        }
+
+        PA->pointCount = line_start_index + temp;
+        rendered_till = PA->pointCount;
+        free(keep);
+}
