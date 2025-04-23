@@ -17,6 +17,8 @@
                 *b = temp; \
         } while (0)
 #define POINTS_THRESHOLD 1
+#define fpart(x) ((x) - (int)(x))
+#define rfpart(x) (1.0f - fpart(x))
 
 double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
         double dx = lineEnd.x - lineStart.x;
@@ -73,17 +75,15 @@ int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool 
         return 0;
 }
 
-void setPixel(SDL_Renderer* renderer, int x, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 a, float intensity) {
-        SDL_SetRenderDrawColor(renderer, r, g, b, (Uint8)(a * intensity));
+void setPixel(SDL_Renderer* renderer, int x, int y, SDL_Color color, float intensity) {
+        color.r *= intensity;
+        color.g *= intensity;
+        color.b *= intensity;
+        color.a *= intensity;
+
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, unpack_color(color));
         SDL_RenderDrawPoint(renderer, x, y);
-}
-
-float fractionalPart(float x) {
-        return x - floorf(x);
-}
-
-float rfpart(float x) {
-        return 1.0f - fractionalPart(x);
 }
 
 // Wu's Algorithm: Wikipedia
@@ -114,11 +114,11 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
         int ypxl1 = (int)floorf(yend);
 
         if (steep) {
-                setPixel(renderer, ypxl1, xpxl1, unpack_color(color), rfpart(yend) * xgap);
-                setPixel(renderer, ypxl1 + 1, xpxl1, unpack_color(color), fractionalPart(yend) * xgap);
+                setPixel(renderer, ypxl1, xpxl1, color, rfpart(yend) * xgap);
+                setPixel(renderer, ypxl1 + 1, xpxl1, color, fpart(yend) * xgap);
         } else {
-                setPixel(renderer, xpxl1, ypxl1, unpack_color(color), rfpart(yend) * xgap);
-                setPixel(renderer, xpxl1, ypxl1 + 1, unpack_color(color), fractionalPart(yend) * xgap);
+                setPixel(renderer, xpxl1, ypxl1, color, rfpart(yend) * xgap);
+                setPixel(renderer, xpxl1, ypxl1 + 1, color, fpart(yend) * xgap);
         }
 
         float intery = yend + gradient;
@@ -126,29 +126,29 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
         // Second endpoint calculation
         xend = x1;
         yend = y1 + gradient * (xend - x1);
-        xgap = fractionalPart(x1 + 0.5f);
+        xgap = fpart(x1 + 0.5f);
         int xpxl2 = (int)xend;
         int ypxl2 = (int)floorf(yend);
 
         if (steep) {
-                setPixel(renderer, ypxl2, xpxl2, unpack_color(color), rfpart(yend) * xgap);
-                setPixel(renderer, ypxl2 + 1, xpxl2, unpack_color(color), fractionalPart(yend) * xgap);
+                setPixel(renderer, ypxl2, xpxl2, color, rfpart(yend) * xgap);
+                setPixel(renderer, ypxl2 + 1, xpxl2, color, fpart(yend) * xgap);
         } else {
-                setPixel(renderer, xpxl2, ypxl2, unpack_color(color), rfpart(yend) * xgap);
-                setPixel(renderer, xpxl2, ypxl2 + 1, unpack_color(color), fractionalPart(yend) * xgap);
+                setPixel(renderer, xpxl2, ypxl2, color, rfpart(yend) * xgap);
+                setPixel(renderer, xpxl2, ypxl2 + 1, color, fpart(yend) * xgap);
         }
 
         // Main loop
         for (int x = xpxl1 + 1; x < xpxl2; x++) {
                 int y = (int)floorf(intery);
-                float fpart = fractionalPart(intery);
+                float fpart = fpart(intery);
 
                 if (steep) {
-                        setPixel(renderer, y, x, unpack_color(color), 1.0f - fpart);
-                        setPixel(renderer, y + 1, x, unpack_color(color), fpart);
+                        setPixel(renderer, y, x, color, 1.0f - fpart);
+                        setPixel(renderer, y + 1, x, color, fpart);
                 } else {
-                        setPixel(renderer, x, y, unpack_color(color), 1.0f - fpart);
-                        setPixel(renderer, x, y + 1, unpack_color(color), fpart);
+                        setPixel(renderer, x, y, color, 1.0f - fpart);
+                        setPixel(renderer, x, y + 1, color, fpart);
                 }
 
                 intery += gradient;
@@ -301,9 +301,22 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep
         }
 }
 
-void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
-        double epsilon = 20.0f; // TODO: Make it dynamic
+float averagePointLineDistance(Point* points, int count) {
+        float total = 0;
+        int valid = 0;
 
+        for (int i = 1; i < count - 1; i++) {
+                float d = perpendicularDistance(points[0], points[count - 1], points[i]);
+                total += d;
+                valid++;
+        }
+
+        return (valid > 0) ? (total / valid) : 0;
+}
+
+
+void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
+        double epsilon = averagePointLineDistance(PA->points, PA->pointCount) * 0.01f; // TODO: Make it dynamic
 
         int* keep = calloc(PA->pointCount, sizeof(int));
         keep[line_start_index] = 1;

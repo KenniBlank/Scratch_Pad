@@ -55,7 +55,7 @@ void handle_events(
         SDL_Window* window,
         SDL_Renderer* renderer,
         TotalData *Data,
-        SDL_Texture **staticLayer,
+        SDL_Texture **drawLayer,
         int* window_width,
         int* window_height,
         bool* app_running,
@@ -76,12 +76,12 @@ void handle_events(
                         case SDL_WINDOWEVENT:
                                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                                         SDL_GetWindowSize(window, window_width, window_height);
-                                        SDL_Texture* old = *staticLayer;
+                                        SDL_Texture* old = *drawLayer;
 
-                                        *staticLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, *window_width, *window_height);
+                                        *drawLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, *window_width, *window_height);
 
                                         // Copy content from old to new
-                                        SDL_SetRenderTarget(renderer, *staticLayer);
+                                        SDL_SetRenderTarget(renderer, *drawLayer);
                                         SDL_RenderCopy(renderer, old, NULL, NULL);
                                         SDL_SetRenderTarget(renderer, NULL);
 
@@ -149,6 +149,8 @@ void handle_events(
                                                                         OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1);
 
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
+
+                                                                        *rerender = true;
                                                                         break;
                                                                 }
                                                         default:
@@ -228,8 +230,6 @@ int main(void) {
                 );
         #endif
 
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
         bool app_is_running = true;
         bool update_renderer = true;
 
@@ -256,7 +256,7 @@ int main(void) {
 
         // Static Background Texture:
         //      This is where all of lines are drawn so that no need to rerender eveything
-        SDL_Texture *staticLayer = SDL_CreateTexture(
+        SDL_Texture *drawLayer = SDL_CreateTexture(
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
@@ -272,7 +272,7 @@ int main(void) {
                         window,
                         renderer,
                         &Data[0],
-                        &staticLayer,
+                        &drawLayer,
                         &WINDOW_WIDTH,
                         &WINDOW_HEIGHT,
                         &app_is_running,
@@ -286,7 +286,7 @@ int main(void) {
                 if (update_renderer) {
                         update_renderer = false;
 
-                        SDL_SetRenderTarget(renderer, staticLayer);
+                        SDL_SetRenderTarget(renderer, drawLayer);
                         if (rerender) {
                                 // Clear Screen
                                 SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
@@ -305,7 +305,7 @@ int main(void) {
                         SDL_RenderClear(renderer);
 
                         // Copy static things back to renderer and render it
-                        SDL_RenderCopy(renderer, staticLayer, NULL, NULL);
+                        SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
                         SDL_RenderPresent(renderer);
 
                         #ifdef DEBUG
@@ -323,7 +323,7 @@ int main(void) {
                 }
         }
 
-        SDL_DestroyTexture(staticLayer);
+        SDL_DestroyTexture(drawLayer);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
