@@ -196,10 +196,10 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
         float length = hypotf(p3.x - p0.x, p3.y - p0.y);
 
         // Normalize deviation
-        float deviationFactor = maxDeviation / (length + 1e-5f);
+        float deviationFactor = maxDeviation / (length + 1e-5f); // 1e-5f == 0.00001, cool right!! Found from chatgpt
 
         // Clamp steps to sane values
-        int steps = (int)(10 + deviationFactor * 50); // from 10 (flat) to 60 (curvy)
+        int steps = (int)(10 + deviationFactor * 60); // from 10 (flat) to 60 (curvy)
         if (steps < 10) steps = 10;
         if (steps > 60) steps = 60;
 
@@ -336,3 +336,9 @@ void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_i
         PA->rendered_till = PA->pointCount;
         free(keep);
 }
+
+#undef unwrap_color
+#undef swap
+#undef POINTS_THRESHOLD
+#undef fpart
+#undef rfpart
