@@ -29,4 +29,4 @@ int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool 
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
 void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color);
 void PanPoints(Pan* pan, float xrel, float yrel);
-void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index, double epsilon);
+void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index);

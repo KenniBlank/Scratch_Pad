@@ -18,6 +18,21 @@
         } while (0)
 #define POINTS_THRESHOLD 1
 
+double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
+        double dx = lineEnd.x - lineStart.x;
+        double dy = lineEnd.y - lineStart.y;
+
+        if (dx == 0 && dy == 0) {
+                dx = pt.x - lineStart.x;
+                dy = pt.y - lineStart.y;
+                return sqrt(dx * dx + dy * dy);
+        }
+
+        double num = fabs(dy * pt.x - dx * pt.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
+        double den = sqrt(dx * dx + dy * dy);
+        return num / den;
+}
+
 int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line) {
         if (PA->pointCapacity >= UINT16_MAX) {
                 return 1;
@@ -146,10 +161,100 @@ void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color c
         }
 }
 
+Point lerp(Point a, Point b, float t) {
+        return (Point) {
+                .x = a.x + (b.x - a.x) * t,
+                .y = a.y + (b.y - a.y) * t,
+        };
+}
+
+void renderBezierCurve(SDL_Renderer *renderer, Point p0, Point p1, Point p2, Point p3, Pan pan, int steps, SDL_Color color) {
+        Point prev = p0;
+
+        for (int i = 1; i <= steps; i++) {
+                float t = i / (float)steps;
+
+                Point a = lerp(p0, p1, t);
+                Point b = lerp(p1, p2, t);
+                Point c = lerp(p2, p3, t);
+
+                Point d = lerp(a, b, t);
+                Point e = lerp(b, c, t);
+
+                Point f = lerp(d, e, t); // Final point on curve
+
+                BetterLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y, color);
+                prev = f;
+        }
+}
+
+int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
+        float d1 = perpendicularDistance(p0, p3, p1);
+        float d2 = perpendicularDistance(p0, p3, p2);
+
+        float maxDeviation = fmaxf(d1, d2);
+        float length = hypotf(p3.x - p0.x, p3.y - p0.y);
+
+        // Normalize deviation
+        float deviationFactor = maxDeviation / (length + 1e-5f);
+
+        // Clamp steps to sane values
+        int steps = (int)(10 + deviationFactor * 50); // from 10 (flat) to 60 (curvy)
+        if (steps < 10) steps = 10;
+        if (steps > 60) steps = 60;
+
+        return steps;
+}
+
+
+void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
+        Point arr[4];
+        int temp = 0;
+
+        for (int i = 0; i < PA->pointCount; i++) {
+                arr[temp++] = PA->points[i];
+
+                if (!PA->points[i].connected_to_next_point) {
+                        // Handle disconnected segments
+                        if (temp == 2) {
+                                // BetterLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y, color);
+                                SDL_SetRenderDrawColor(renderer, unpack_color(color));
+                                SDL_RenderDrawLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y);
+                        } else if (temp == 3) {
+                                int steps = estimateSteps(arr[0], arr[1], arr[2], arr[2]);
+                                renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[2], pan, steps, color);
+                        } else if (temp == 4) {
+                                int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
+                                renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
+                        }
+
+                        temp = 0;
+                } else if (temp == 4) {
+                        int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
+                        renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
+                        arr[0] = arr[3]; // Shift last point as start of next segment
+                        temp = 1;
+                }
+        }
+
+        // Handle leftovers if any
+        if (temp == 2) {
+                BetterLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y, color);
+        } else if (temp == 3) {
+                int steps = estimateSteps(arr[0], arr[1], arr[2], arr[2]);
+                renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[2], pan, steps, color);
+        } else if (temp == 4) {
+                int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
+                renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
+        }
+}
+
+
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
                 for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
-                        RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
+                        // RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
+                        __RenderLines__(renderer, PA, pan, color);
                 }
         }
         PA->rendered_till = PA->pointCount;
@@ -171,21 +276,6 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
 void PanPoints(Pan* pan, float xrel, float yrel) {
         pan->x += xrel;
         pan->y += yrel;
-}
-
-double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
-        double dx = lineEnd.x - lineStart.x;
-        double dy = lineEnd.y - lineStart.y;
-
-        if (dx == 0 && dy == 0) {
-                dx = pt.x - lineStart.x;
-                dy = pt.y - lineStart.y;
-                return sqrt(dx * dx + dy * dy);
-        }
-
-        double num = fabs(dy * pt.x - dx * pt.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
-        double den = sqrt(dx * dx + dy * dy);
-        return num / den;
 }
 
 void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep) {
@@ -211,7 +301,10 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep
         }
 }
 
-void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index, double epsilon) {
+void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
+        double epsilon = 20.0f; // TODO: Make it dynamic
+
+
         int* keep = calloc(PA->pointCount, sizeof(int));
         keep[line_start_index] = 1;
         keep[line_end_index] = 1;

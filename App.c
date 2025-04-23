@@ -146,7 +146,7 @@ void handle_events(
                                                         case MODE_DRAWING: {
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, true);
 
-                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1, 10.0f);
+                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1);
 
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
                                                                         break;
