@@ -101,7 +101,7 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
 
         float dx = x1 - x0;
         float dy = y1 - y0;
-        float gradient = (dx == 0.0f) ? 1.0f : dy / dx;
+        float gradient = (fabs(dx) < 1e-6) ? 1.0f : dy / dx;
 
         // First endpoint calculation
         float xend = x0;
@@ -180,10 +180,7 @@ void renderBezierCurve(SDL_Renderer *renderer, Point p0, Point p1, Point p2, Poi
 
                 Point f = lerp(d, e, t); // Final point on curve
 
-                // BetterLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y, color);
-
-                SDL_SetRenderDrawColor(renderer, unpack_color(color));
-                SDL_RenderDrawLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y);
+                BetterLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y, color);
                 prev = f;
         }
 }
@@ -207,12 +204,13 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
 }
 
 
-void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t line_start_index, SDL_Color color) {
+void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t line_start_index, uint16_t line_end_index, SDL_Color color) {
         Point arr[4];
         int temp = 0;
 
-        for (int i = line_start_index; i < PA->pointCount; i++) {
-                arr[temp++] = PA->points[i];
+        for (int i = line_start_index; i <= line_end_index; i++) {
+                arr[temp] = PA->points[i];
+                temp++;
 
                 if (!PA->points[i].connected_to_next_point) {
                         // Handle disconnected segments
@@ -222,13 +220,12 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
                         } else if (temp == 3) {
                                 int steps = estimateSteps(arr[0], arr[1], arr[2], arr[2]);
                                 renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[2], pan, steps, color);
-                        } else if (temp == 4) {
-                                int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
-                                renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
                         }
 
                         temp = 0;
-                } else if (temp == 4) {
+                }
+
+                if (temp == 4) {
                         int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
                         renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
                         arr[0] = arr[3];
@@ -251,7 +248,7 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
 
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
-                __RenderLines__(renderer, PA, pan, 0, color);
+                __RenderLines__(renderer, PA, pan, 0, PA->pointCount - 1, color);
         }
         PA->rendered_till = PA->pointCount;
 }
@@ -275,8 +272,9 @@ void PanPoints(Pan* pan, float xrel, float yrel) {
         pan->y += yrel;
 }
 
-void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep) {
+void douglasPeucker(Point* points, int start, int end, double epsilon, bool* keep) {
         if (end <= start + 1) {
+                keep[start] = true;
                 return;
         }
 
@@ -291,8 +289,8 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, int* keep
                 }
         }
 
-        if (maxDist > epsilon) {
-                keep[index] = 1;
+        if (maxDist >= epsilon) {
+                keep[index] = true;
                 douglasPeucker(points, start, index, epsilon, keep);
                 douglasPeucker(points, index, end, epsilon, keep);
         }
@@ -316,7 +314,7 @@ void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_i
         double epsilon = averagePointLineDistance(PA->points, PA->pointCount) * 0.001f; // TODO: Make it dynamic
         printf("%f", epsilon);
         fflush(stdout);
-        int* keep = calloc(PA->pointCount, sizeof(int));
+        bool* keep = calloc(PA->pointCount, sizeof(int));
         keep[line_start_index] = 1;
         keep[line_end_index] = 1;
 

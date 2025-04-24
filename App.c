@@ -255,14 +255,6 @@ int main(void) {
                 WINDOW_WIDTH, WINDOW_HEIGHT
         );
 
-        // Static Texture where all new bezier curve items are added
-        SDL_Texture *staticLayer = SDL_CreateTexture(
-                renderer,
-                SDL_PIXELFORMAT_RGBA8888,
-                SDL_TEXTUREACCESS_TARGET,
-                WINDOW_WIDTH, WINDOW_HEIGHT
-        );
-
         bool rerender = false;
 
         Data[0].current_mode = MODE_DRAWING;
