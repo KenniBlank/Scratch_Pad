@@ -13,7 +13,7 @@ typedef struct {
 } Pan;
 
 typedef struct {
-        int32_t x, y;
+        float x, y;
         uint8_t line_thickness;
         bool connected_to_next_point;
 } Point;
