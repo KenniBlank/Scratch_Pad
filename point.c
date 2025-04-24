@@ -296,7 +296,17 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, bool* kee
         }
 }
 
-float averagePointLineDistance(Point* points, int count) {
+float standardDeviation(Point* points, int count, float mean) {
+    float sum = 0;
+    for (int i = 1; i < count - 1; i++) {
+        float d = perpendicularDistance(points[0], points[count - 1], points[i]);
+        sum += pow(d - mean, 2);
+    }
+    return sqrt(sum / (count));
+}
+
+
+float calculateEpsilon(Point* points, int count) {
         float total = 0;
         int valid = 0;
 
@@ -306,19 +316,23 @@ float averagePointLineDistance(Point* points, int count) {
                 valid++;
         }
 
-        return (valid > 0) ? (total / valid) : 0;
+        float mean = (valid > 0) ? (total / valid) : 0;
+
+        // Calculate the standard deviation
+        float stddev = standardDeviation(points, count, mean);
+
+        double epsilon = mean + stddev;
+        return epsilon;
 }
 
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
-        double epsilon = averagePointLineDistance(PA->points, PA->pointCount) * 0.001f; // TODO: Make it dynamic
-        printf("%f", epsilon);
-        fflush(stdout);
+        double epsilon = calculateEpsilon(PA->points, PA->pointCount) * 0.001f; // TODO: Make it dynamic
         bool* keep = calloc(PA->pointCount, sizeof(int));
-        keep[line_start_index] = 1;
-        keep[line_end_index] = 1;
 
         douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
+        keep[line_start_index] = 1;
+        keep[line_end_index] = 1;
 
         uint16_t temp = 0;
         for (int i = line_start_index; i <= line_end_index; ++i) {

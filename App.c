@@ -141,11 +141,9 @@ void handle_events(
                                                 switch (current_mode) {
                                                         case MODE_DRAWING: {
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, true);
-
-                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1);
-
                                                                         addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
-
+                                                                        OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1);
+                                                                        addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
                                                                         *rerender = true;
                                                                         break;
                                                                 }
