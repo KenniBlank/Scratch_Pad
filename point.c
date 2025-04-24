@@ -76,9 +76,6 @@ int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool 
 }
 
 void setPixel(SDL_Renderer* renderer, int x, int y, SDL_Color color, float intensity) {
-        color.r *= intensity;
-        color.g *= intensity;
-        color.b *= intensity;
         color.a *= intensity;
 
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -183,7 +180,10 @@ void renderBezierCurve(SDL_Renderer *renderer, Point p0, Point p1, Point p2, Poi
 
                 Point f = lerp(d, e, t); // Final point on curve
 
-                BetterLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y, color);
+                // BetterLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y, color);
+
+                SDL_SetRenderDrawColor(renderer, unpack_color(color));
+                SDL_RenderDrawLine(renderer, prev.x + pan.x, prev.y + pan.y, f.x + pan.x, f.y + pan.y);
                 prev = f;
         }
 }
@@ -196,12 +196,12 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
         float length = hypotf(p3.x - p0.x, p3.y - p0.y);
 
         // Normalize deviation
-        float deviationFactor = maxDeviation / (length + 1e-5f); // 1e-5f == 0.00001, cool right!! Found from chatgpt
+        float deviationFactor = maxDeviation / (length + 1e-5f); // 1e-5f == 0.00001, cool right!!
 
         // Clamp steps to sane values
-        int steps = (int)(10 + deviationFactor * 60); // from 10 (flat) to 60 (curvy)
+        int steps = (int)(10 + deviationFactor * 100); // from 10 (flat) to 100 (curvy)
         if (steps < 10) steps = 10;
-        if (steps > 60) steps = 60;
+        if (steps > 100) steps = 100;
 
         return steps;
 }
@@ -217,9 +217,8 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
                 if (!PA->points[i].connected_to_next_point) {
                         // Handle disconnected segments
                         if (temp == 2) {
-                                // BetterLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y, color);
+                                BetterLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y, color);
                                 SDL_SetRenderDrawColor(renderer, unpack_color(color));
-                                SDL_RenderDrawLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y);
                         } else if (temp == 3) {
                                 int steps = estimateSteps(arr[0], arr[1], arr[2], arr[2]);
                                 renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[2], pan, steps, color);
@@ -232,12 +231,12 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
                 } else if (temp == 4) {
                         int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
                         renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
-                        arr[0] = arr[3]; // Shift last point as start of next segment
+                        arr[0] = arr[3];
                         temp = 1;
                 }
         }
 
-        // Handle leftovers if any
+        // Handle leftovers
         if (temp == 2) {
                 BetterLine(renderer, arr[0].x + pan.x, arr[0].y + pan.y, arr[1].x + pan.x, arr[1].y + pan.y, color);
         } else if (temp == 3) {
@@ -252,9 +251,6 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
 
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
-                // for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
-                //         // RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
-                // }
                 __RenderLines__(renderer, PA, pan, 0, color);
         }
         PA->rendered_till = PA->pointCount;
@@ -268,6 +264,7 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
         }
 
         while (PA->rendered_till < PA->pointCount - 1) {
+                color.r = 150;
                 RenderLine(renderer, PA->points[PA->rendered_till], PA->points[PA->rendered_till + 1], pan, color);
                 PA->rendered_till += 1;
         }
@@ -316,8 +313,9 @@ float averagePointLineDistance(Point* points, int count) {
 
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
-        double epsilon = averagePointLineDistance(PA->points, PA->pointCount) * 0.01f; // TODO: Make it dynamic
-
+        double epsilon = averagePointLineDistance(PA->points, PA->pointCount) * 0.001f; // TODO: Make it dynamic
+        printf("%f", epsilon);
+        fflush(stdout);
         int* keep = calloc(PA->pointCount, sizeof(int));
         keep[line_start_index] = 1;
         keep[line_end_index] = 1;
