@@ -13,6 +13,10 @@ This is the better repository of my [scratch-pad](https://github.com/KenniBlank/
 
 ## Notes:
 
+- Erasor tool:
+
+    Instead of deleting points rendered, just create a new rect with erasor size that is same color as background. EASY!!!
+
 - Data Oriented Design
 
     - Efficient Layout and Storage:

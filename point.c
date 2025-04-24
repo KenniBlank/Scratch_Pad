@@ -207,11 +207,11 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
 }
 
 
-void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
+void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t line_start_index, SDL_Color color) {
         Point arr[4];
         int temp = 0;
 
-        for (int i = 0; i < PA->pointCount; i++) {
+        for (int i = line_start_index; i < PA->pointCount; i++) {
                 arr[temp++] = PA->points[i];
 
                 if (!PA->points[i].connected_to_next_point) {
@@ -252,10 +252,10 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color 
 
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
-                for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
-                        // RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
-                        __RenderLines__(renderer, PA, pan, color);
-                }
+                // for (uint16_t i = 0; i < (PA -> pointCount - 1); i++) {
+                //         // RenderLine(renderer, PA->points[i], PA->points[i + 1], pan, color);
+                // }
+                __RenderLines__(renderer, PA, pan, 0, color);
         }
         PA->rendered_till = PA->pointCount;
 }

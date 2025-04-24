@@ -1,6 +1,7 @@
 #include <SDL2/SDL_config_unix.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
+#include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
@@ -42,7 +43,6 @@ enum Mode: uint8_t {
         MODE_DRAWING,
         MODE_PAN,
         MODE_ERASOR,
-        MODE_LINE_ERASOR,
 };
 
 typedef struct {
@@ -108,11 +108,7 @@ void handle_events(
                                                 Data->current_mode = MODE_PAN;
                                                 break;
                                         case SDLK_e:
-                                                if (Data->current_mode == MODE_ERASOR) {
-                                                        Data->current_mode = MODE_LINE_ERASOR;
-                                                } else {
-                                                        Data->current_mode = MODE_ERASOR;
-                                                }
+                                                Data->current_mode = MODE_ERASOR;
                                                 break;
                                         case SDLK_s:
                                                 SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
@@ -197,9 +193,6 @@ void handle_cursor_change(enum Mode current_mode) {
                 case MODE_ERASOR:
                         SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND));
                         break;
-                case MODE_LINE_ERASOR:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO));
-                        break;
         }
 }
 
@@ -254,9 +247,16 @@ int main(void) {
                 Data[i] = DATA_INIT_VALUE;
         }
 
-        // Static Background Texture:
-        //      This is where all of lines are drawn so that no need to rerender eveything
+        // This is where all of lines are drawn so that no need to rerender eveything
         SDL_Texture *drawLayer = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                WINDOW_WIDTH, WINDOW_HEIGHT
+        );
+
+        // Static Texture where all new bezier curve items are added
+        SDL_Texture *staticLayer = SDL_CreateTexture(
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
@@ -330,3 +330,9 @@ int main(void) {
 
         return 0;
 }
+
+#undef unpack_color
+#undef __DEBUG__
+#undef SAVE_LOCATION
+#undef BUFFER_SIZE
+#undef swap
