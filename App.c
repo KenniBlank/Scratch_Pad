@@ -122,7 +122,7 @@ void handle_events(
                                                 *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING:
-                                                                addPoint(&Data->lines, event.button.x  - Data->pan.x, event.button.y  - Data->pan.y, LINE_THICKNESS, true);
+                                                                addPoint(&Data->lines, (float) event.button.x  - Data->pan.x, (float) (event.button.y  - Data->pan.y), LINE_THICKNESS, true);
                                                                 line_start_index = Data->lines.pointCount - 1;
                                                                 break;
                                                         case MODE_ERASOR:
@@ -140,9 +140,9 @@ void handle_events(
                                                 *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING: {
-                                                                        addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, true);
+                                                                        addPoint(&Data->lines, (float) (event.button.x - Data->pan.x), (float) (event.button.y - Data->pan.y), LINE_THICKNESS, true);
                                                                         OptimizeLine(&Data->lines, line_start_index, Data->lines.pointCount - 1);
-                                                                        addPoint(&Data->lines, event.button.x - Data->pan.x, event.button.y - Data->pan.y, LINE_THICKNESS, false);
+                                                                        addPoint(&Data->lines, (float) (event.button.x - Data->pan.x), (float) (event.button.y - Data->pan.y), LINE_THICKNESS, false);
                                                                         *rerender = true;
                                                                         break;
                                                                 }
@@ -159,12 +159,12 @@ void handle_events(
                                         case MODE_NONE:
                                                 break;
                                         case MODE_PAN:
-                                                PanPoints(&Data->pan, event.motion.xrel, event.motion.yrel);
+                                                PanPoints(&Data->pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
                                                 *update_renderer = true;
                                                 *rerender = true;
                                                 break;
                                         case MODE_DRAWING:
-                                                addPoint(&Data->lines, event.motion.x - Data->pan.x, event.motion.y - Data->pan.y, LINE_THICKNESS, true);
+                                                addPoint(&Data->lines, (double) (event.motion.x - Data->pan.x), (double) (event.motion.y - Data->pan.y), LINE_THICKNESS, true);
 
                                                 *update_renderer = true;
                                                 break;
@@ -203,14 +203,14 @@ int main(void) {
                 "Scratch Pad",
                 SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                 WINDOW_WIDTH, WINDOW_HEIGHT,
-                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP
+                SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE
         );
 
         #ifdef DEBUG
                 SDL_Renderer* renderer = SDL_CreateRenderer(
                         window,
                         -1,
-                        SDL_RENDERER_ACCELERATED
+                        SDL_RENDERER_SOFTWARE
                 );
         #else
                 SDL_Renderer* renderer = SDL_CreateRenderer(

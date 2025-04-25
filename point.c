@@ -16,7 +16,6 @@
                 *a = *b; \
                 *b = temp; \
         } while (0)
-#define POINTS_THRESHOLD 1
 #define fpart(x) ((x) - (int)(x))
 #define rfpart(x) (1.0f - fpart(x))
 
@@ -35,7 +34,7 @@ double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
         return num / den;
 }
 
-int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool connected_to_prev_line) {
+int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool connected_to_prev_line) {
         if (PA->pointCapacity >= UINT16_MAX) {
                 return 1;
         }
@@ -56,36 +55,26 @@ int addPoint(LinesArray* PA, int32_t x, int32_t y, uint8_t line_thickness, bool 
                 PA->pointCapacity = new_capacity;
         }
 
-        bool add_point = true;
-
-        if (connected_to_prev_line && PA->pointCount > 0) {
-                int32_t dx = PA->points[PA->pointCount - 1].x - x;
-                int32_t dy = PA->points[PA->pointCount - 1].y - y;
-                add_point = (dx * dx + dy * dy) > (POINTS_THRESHOLD * POINTS_THRESHOLD);
-        }
-
-        if (add_point) {
-                PA->points[PA->pointCount].x = x;
-                PA->points[PA->pointCount].y = y;
-                PA->points[PA->pointCount].connected_to_next_point = connected_to_prev_line;
-                PA->points[PA->pointCount].line_thickness = line_thickness;
-                PA->pointCount++;
-        }
+        PA->points[PA->pointCount].x = x;
+        PA->points[PA->pointCount].y = y;
+        PA->points[PA->pointCount].connected_to_next_point = connected_to_prev_line;
+        PA->points[PA->pointCount].line_thickness = line_thickness;
+        PA->pointCount++;
 
         return 0;
 }
 
-void setPixel(SDL_Renderer* renderer, int x, int y, SDL_Color color, float intensity) {
+void setPixel(SDL_Renderer* renderer, float x, float y, SDL_Color color, float intensity) {
         color.a *= intensity;
 
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, unpack_color(color));
-        SDL_RenderDrawPoint(renderer, x, y);
+        SDL_RenderDrawPointF(renderer, x, y);
 }
 
 // Wu's Algorithm: Wikipedia
-void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Color color) {
-        bool steep = abs(y1 - y0) > abs(x1 - x0);
+void BetterLine(SDL_Renderer* renderer, float x0, float y0, float x1, float y1, SDL_Color color) {
+        bool steep = fabs(y1 - y0) > fabs(x1 - x0);
 
         // Swap if the line is steep
         if (steep) {
@@ -138,14 +127,14 @@ void BetterLine(SDL_Renderer* renderer, int x0, int y0, int x1, int y1, SDL_Colo
         // Main loop
         for (int x = xpxl1 + 1; x < xpxl2; x++) {
                 int y = (int)floorf(intery);
-                float fpart = fpart(intery);
+                float frac = fpart(intery);
 
                 if (steep) {
-                        setPixel(renderer, y, x, color, 1.0f - fpart);
-                        setPixel(renderer, y + 1, x, color, fpart);
+                        setPixel(renderer, y, x, color, 1.0f - frac);
+                        setPixel(renderer, y + 1, x, color, frac);
                 } else {
-                        setPixel(renderer, x, y, color, 1.0f - fpart);
-                        setPixel(renderer, x, y + 1, color, fpart);
+                        setPixel(renderer, x, y, color, 1.0f - frac);
+                        setPixel(renderer, x, y + 1, color, frac);
                 }
 
                 intery += gradient;
@@ -186,19 +175,19 @@ void renderBezierCurve(SDL_Renderer *renderer, Point p0, Point p1, Point p2, Poi
 }
 
 int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
-        float d1 = perpendicularDistance(p0, p3, p1);
-        float d2 = perpendicularDistance(p0, p3, p2);
-
-        float maxDeviation = fmaxf(d1, d2);
+        float maxDeviation = fmaxf(perpendicularDistance(p0, p3, p1), perpendicularDistance(p0, p3, p2));
         float length = hypotf(p3.x - p0.x, p3.y - p0.y);
 
         // Normalize deviation
-        float deviationFactor = maxDeviation / (length + 1e-5f); // 1e-5f == 0.00001, cool right!!
+        if (length < 1e-5f) {
+                length = 1e-5f;
+        }
+        float deviationFactor = maxDeviation / length;
 
         // Clamp steps to sane values
-        int steps = (int)(10 + deviationFactor * 100); // from 10 (flat) to 100 (curvy)
-        if (steps < 10) steps = 10;
-        if (steps > 100) steps = 100;
+        int steps = (int)(50 + deviationFactor * 200); // from 50 (flat) to 200 (curvy)
+        if (steps < 50) steps = 50;
+        if (steps > 200) steps = 200;
 
         return steps;
 }
@@ -326,9 +315,10 @@ float calculateEpsilon(Point* points, int count) {
 
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
+        if (PA->pointCount == 0) return;
+
         double epsilon = calculateEpsilon(PA->points, PA->pointCount); // TODO: Make it dynamic
         bool* keep = calloc(PA->pointCount, sizeof(int));
-
         douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
         keep[line_start_index] = 1;
         keep[line_end_index] = 1;
