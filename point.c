@@ -297,12 +297,12 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, bool* kee
 }
 
 float standardDeviation(Point* points, int count, float mean) {
-    float sum = 0;
-    for (int i = 1; i < count - 1; i++) {
-        float d = perpendicularDistance(points[0], points[count - 1], points[i]);
-        sum += pow(d - mean, 2);
-    }
-    return sqrt(sum / (count));
+        float sum = 0;
+        for (int i = 1; i < count - 1; i++) {
+                float d = perpendicularDistance(points[0], points[count - 1], points[i]);
+                sum += pow(d - mean, 2);
+        }
+        return sqrt(sum / (count));
 }
 
 
@@ -321,13 +321,12 @@ float calculateEpsilon(Point* points, int count) {
         // Calculate the standard deviation
         float stddev = standardDeviation(points, count, mean);
 
-        double epsilon = mean + stddev;
-        return epsilon;
+        return stddev * 1e-3f;
 }
 
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
-        double epsilon = calculateEpsilon(PA->points, PA->pointCount) * 0.001f; // TODO: Make it dynamic
+        double epsilon = calculateEpsilon(PA->points, PA->pointCount); // TODO: Make it dynamic
         bool* keep = calloc(PA->pointCount, sizeof(int));
 
         douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
