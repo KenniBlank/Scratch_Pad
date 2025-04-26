@@ -250,7 +250,8 @@ void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color colo
         }
 
         while (PA->rendered_till < PA->pointCount - 1) {
-                color.r = 150;
+                color.r = 0;
+
                 RenderLine(renderer, PA->points[PA->rendered_till], PA->points[PA->rendered_till + 1], pan, color);
                 PA->rendered_till += 1;
         }

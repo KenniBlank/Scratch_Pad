@@ -34,4 +34,5 @@ move: compile
 	@echo -e "Successfully moved file to Home"
 
 clean:
+	@rm Images/__image__*
 	@rm $(App)

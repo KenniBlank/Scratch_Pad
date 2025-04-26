@@ -26,13 +26,13 @@
 #define VIRTUAL_WIDTH 1900
 #define VIRTUAL_HEIGHT 1080
 
+#define BUFFER_SIZE (uint8_t)100
+
 #ifdef DEBUG
     #define SAVE_LOCATION "Images/"
 #else
     #define SAVE_LOCATION "Pictures/"
 #endif
-
-#define BUFFER_SIZE (uint8_t)100
 
 #define swap(a, b) \
     do { \
@@ -58,29 +58,20 @@ typedef struct {
 // Global Variables:
 SDL_Cursor* arrowCursor;
 SDL_Cursor* crosshairCursor;
-SDL_Cursor* sizeallCursor;
-SDL_Cursor* handCursor;
+SDL_Cursor* panCursor;
+SDL_Cursor* erasorCursor;
 
 void handle_cursor_change(enum Mode current_mode) {
         switch (current_mode) {
-                case MODE_NONE:
-                case MODE_TYPING:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW));
-                        break;
-                case MODE_DRAWING:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
-                        break;
-                case MODE_PAN:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL));
-                        break;
-                case MODE_ERASOR:
-                        SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND));
-                        break;
+                case MODE_NONE: case MODE_TYPING: SDL_SetCursor(arrowCursor); break;
+                case MODE_DRAWING: SDL_SetCursor(crosshairCursor); break;
+                case MODE_PAN: SDL_SetCursor(panCursor); break;
+                case MODE_ERASOR: SDL_SetCursor(erasorCursor); break;
         }
 }
 
 int main(void) {
-        int window_width = 900, window_height = 500;
+        int window_width = 900, window_height = 600;
 
         uint8_t LINE_THICKNESS = 3;
 
@@ -103,7 +94,7 @@ int main(void) {
                 SDL_Renderer* renderer = SDL_CreateRenderer(
                         window,
                         -1,
-                        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+                        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE
                 );
         #endif
 
@@ -112,13 +103,23 @@ int main(void) {
 
         arrowCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
         crosshairCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
-        sizeallCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-        handCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+        panCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+        erasorCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
-        SDL_Color
-                bg_color = {0, 0, 0, 255}, // Background Color
-                draw_color = {255, 255, 255, 255},
-                UI_bg_color = {100, 100, 100, 255};
+        #ifdef DEBUG
+                SDL_Color
+                        bg_color = {0, 0, 0, 255},
+                        draw_color = {255, 255, 255, 255};
+        #else
+                SDL_Color
+                        bg_color = {15, 20, 25, 255},
+                        draw_color = {255 - bg_color.r, 255 - bg_color.g, 255 - bg_color.b, 255};
+        #endif
+        // Orange:
+        //         color.r = 255;
+        //         color.g = 179;
+        //         color.b = 83;
+
 
         TotalData DATA_INIT_VALUE = {
                 .lines = {
@@ -142,20 +143,9 @@ int main(void) {
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
-                (window_width << 2) / 5, // - window_width / 5 // TODO: 1/5 for UI Elements if certain window_size
+                window_width, // TODO: 1/8 for UI Elements if certain window_size
                 window_height
         );
-
-        SDL_Texture *UILayer = SDL_CreateTexture(
-                renderer,
-                SDL_PIXELFORMAT_RGBA8888,
-                SDL_TEXTUREACCESS_TARGET,
-                (window_width) / 5, // - window_width / 5 // TODO: 1/5 for UI Elements if certain window_size
-                window_height
-        );
-        SDL_SetRenderTarget(renderer, UILayer);
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
-        SDL_RenderClear(renderer);
 
         bool rerender = false;
 
@@ -168,10 +158,7 @@ int main(void) {
         while (app_is_running) {
                 while (SDL_PollEvent(&event)) {
                         switch (event.type) {
-                                case SDL_QUIT:
-                                        app_is_running = false;
-                                        break;
-
+                                case SDL_QUIT: app_is_running = false; break;
                                 case SDL_WINDOWEVENT:
                                         if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                                                 SDL_GetWindowSize(window, &window_width, &window_height);
@@ -185,33 +172,23 @@ int main(void) {
                                                 SDL_SetRenderTarget(renderer, NULL);
 
                                                 SDL_DestroyTexture(old);
+                                                rerender = true;
                                         }
-                                        rerender = true;
                                         break;
-
                                 case SDL_KEYDOWN:
                                         switch (event.key.keysym.sym) {
-                                                case SDLK_ESCAPE:
-                                                        app_is_running = false;
-                                                        break;
-                                                case SDLK_n:
-                                                        Data[0].current_mode = MODE_NONE;
-                                                        break;
-                                                case SDLK_t:
-                                                        Data[0].current_mode = MODE_TYPING;
-                                                        break;
-                                                case SDLK_d:
-                                                        Data[0].current_mode = MODE_DRAWING;
-                                                        break;
-                                                case SDLK_p:
-                                                        Data[0].current_mode = MODE_PAN;
-                                                        break;
-                                                case SDLK_e:
-                                                        Data[0].current_mode = MODE_ERASOR;
-                                                        break;
-                                                case SDLK_s:
+                                                case SDLK_ESCAPE: app_is_running = false; break;
+                                                case SDLK_n: Data[0].current_mode = MODE_NONE; break;
+                                                case SDLK_t: Data[0].current_mode = MODE_TYPING; break;
+                                                case SDLK_d: Data[0].current_mode = MODE_DRAWING; break;
+                                                case SDLK_p: Data[0].current_mode = MODE_PAN; break;
+                                                case SDLK_e: Data[0].current_mode = MODE_ERASOR; break;
+                                        }
+
+                                        if (event.key.keysym.mod & KMOD_LCTRL) {
+                                                if (event.key.keysym.sym == SDLK_s) {
                                                         SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
-                                                        break;
+                                                }
                                         }
                                         break;
                                 case SDL_MOUSEBUTTONDOWN:
@@ -223,11 +200,8 @@ int main(void) {
                                                                         addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, true);
                                                                         line_start_index = Data[0].lines.pointCount - 1;
                                                                         break;
-                                                                case MODE_ERASOR:
-                                                                        break;
-                                                                default:
-                                                                        rerender = true;
-                                                                        break;
+                                                                case MODE_ERASOR: break;
+                                                                default: rerender = true; break;
                                                         }
                                                         break;
                                         }
@@ -243,8 +217,7 @@ int main(void) {
                                                                                 rerender = true;
                                                                                 break;
                                                                         }
-                                                                default:
-                                                                        break;
+                                                                default: break;
                                                         }
                                                         current_mode = MODE_NONE;
                                                         break;
@@ -252,8 +225,7 @@ int main(void) {
                                         break;
                                 case SDL_MOUSEMOTION:
                                         switch (current_mode) {
-                                                case MODE_NONE:
-                                                        break;
+                                                case MODE_NONE: break;
                                                 case MODE_PAN:
                                                         PanPoints(&Data[0].pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
                                                         rerender = true;
@@ -287,14 +259,14 @@ int main(void) {
                 SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                 SDL_RenderClear(renderer);
 
-                // Copy static things back to renderer and render it
+                // Copy DrawLayers's content to renderer
                 SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
 
                 SDL_RenderPresent(renderer);
 
                 #ifdef DEBUG
                         // print_live_usage();
-                        SDL_Delay(16); // ~60 FPS
+                        SDL_Delay(22); // ~45 FPS
                 #endif
         }
 
@@ -306,8 +278,8 @@ int main(void) {
 
         SDL_FreeCursor(arrowCursor);
         SDL_FreeCursor(crosshairCursor);
-        SDL_FreeCursor(sizeallCursor);
-        SDL_FreeCursor(handCursor);
+        SDL_FreeCursor(panCursor);
+        SDL_FreeCursor(erasorCursor);
 
         SDL_DestroyTexture(drawLayer);
         SDL_DestroyRenderer(renderer);
