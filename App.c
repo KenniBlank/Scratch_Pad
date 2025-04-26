@@ -22,6 +22,10 @@
         printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
         fflush(stdout);
 
+// TODO: Render at this but show in whatever resolution user uses.
+#define VIRTUAL_WIDTH 1900
+#define VIRTUAL_HEIGHT 1080
+
 #ifdef DEBUG
     #define SAVE_LOCATION "Images/"
 #else
@@ -59,7 +63,6 @@ void handle_events(
         int* window_width,
         int* window_height,
         bool* app_running,
-        bool* update_renderer,
         bool* rerender,
         const uint8_t LINE_THICKNESS
 ) {
@@ -87,7 +90,7 @@ void handle_events(
 
                                         SDL_DestroyTexture(old);
                                 }
-                                *update_renderer = true;
+                                *rerender = true;
                                 break;
 
                         case SDL_KEYDOWN:
@@ -119,7 +122,6 @@ void handle_events(
                                 switch (event.button.button) {
                                         case SDL_BUTTON_LEFT:
                                                 current_mode = Data->current_mode;
-                                                *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING:
                                                                 addPoint(&Data->lines, (float) event.button.x  - Data->pan.x, (float) (event.button.y  - Data->pan.y), LINE_THICKNESS, true);
@@ -137,7 +139,6 @@ void handle_events(
                         case SDL_MOUSEBUTTONUP:
                                 switch (event.button.button) {
                                         case SDL_BUTTON_LEFT:
-                                                *update_renderer = true;
                                                 switch (current_mode) {
                                                         case MODE_DRAWING: {
                                                                         addPoint(&Data->lines, (float) (event.button.x - Data->pan.x), (float) (event.button.y - Data->pan.y), LINE_THICKNESS, true);
@@ -160,13 +161,10 @@ void handle_events(
                                                 break;
                                         case MODE_PAN:
                                                 PanPoints(&Data->pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
-                                                *update_renderer = true;
                                                 *rerender = true;
                                                 break;
                                         case MODE_DRAWING:
                                                 addPoint(&Data->lines, (double) (event.motion.x - Data->pan.x), (double) (event.motion.y - Data->pan.y), LINE_THICKNESS, true);
-
-                                                *update_renderer = true;
                                                 break;
                                         default: break;
                                 }
@@ -221,7 +219,7 @@ int main(void) {
         #endif
 
         bool app_is_running = true;
-        bool update_renderer = true;
+        // TODO: Create Loading Screen...
 
         SDL_Color
                 bg_color = {0, 0, 0, 255}, // Background Color
@@ -249,8 +247,20 @@ int main(void) {
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
-                WINDOW_WIDTH, WINDOW_HEIGHT
+                (WINDOW_WIDTH << 2) / 5, // - WINDOW_WIDTH / 5 // TODO: 1/5 for UI Elements if certain window_size
+                WINDOW_HEIGHT
         );
+
+        SDL_Texture *UILayer = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                (WINDOW_WIDTH) / 5, // - WINDOW_WIDTH / 5 // TODO: 1/5 for UI Elements if certain window_size
+                WINDOW_HEIGHT
+        );
+        SDL_SetRenderTarget(renderer, UILayer);
+        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
+        SDL_RenderClear(renderer);
 
         bool rerender = false;
 
@@ -265,43 +275,38 @@ int main(void) {
                         &WINDOW_WIDTH,
                         &WINDOW_HEIGHT,
                         &app_is_running,
-                        &update_renderer,
                         &rerender,
                         LINE_THINKNESS
                 );
 
                 handle_cursor_change(Data[0].current_mode);
 
-                if (update_renderer) {
-                        update_renderer = false;
 
-                        SDL_SetRenderTarget(renderer, drawLayer);
-                        if (rerender) {
-                                // Clear Screen
-                                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
-                                SDL_RenderClear(renderer);
-
-                                ReRenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
-                                rerender = false;
-                        } else {
-                                RenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
-                        }
-
-                        SDL_SetRenderTarget(renderer, NULL);
-
+                SDL_SetRenderTarget(renderer, drawLayer);
+                if (rerender) {
                         // Clear Screen
                         SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                         SDL_RenderClear(renderer);
 
-                        // Copy static things back to renderer and render it
-                        SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
-                        SDL_RenderPresent(renderer);
-
-                        #ifdef DEBUG
-                                // print_live_usage();
-                        #endif
+                        ReRenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
+                        rerender = false;
+                } else {
+                        RenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
                 }
+
+                SDL_SetRenderTarget(renderer, NULL);
+
+                // Clear Screen
+                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
+                SDL_RenderClear(renderer);
+
+                // Copy static things back to renderer and render it
+                SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
+
+                SDL_RenderPresent(renderer);
+
                 #ifdef DEBUG
+                        // print_live_usage();
                         SDL_Delay(16); // ~60 FPS
                 #endif
         }
@@ -319,9 +324,3 @@ int main(void) {
 
         return 0;
 }
-
-#undef unpack_color
-#undef __DEBUG__
-#undef SAVE_LOCATION
-#undef BUFFER_SIZE
-#undef swap

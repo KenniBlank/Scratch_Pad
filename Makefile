@@ -2,11 +2,10 @@ CC = gcc
 
 CFLAGS = -std=gnu2x -Wall -Wextra -Wshadow
 # -fstack-protector-all
-LIBS = -lSDL2 -lm -lSDL2_image
-# -lSDL2_ttf -lpthread
+LIBS = -lSDL2 -lm -lSDL2_image -lSDL2_ttf
+# -lpthread
 
-DEBUGFLAGS = -g -DDEBUG
-# -fsanitize=address
+DEBUGFLAGS = -g -DDEBUG -fsanitize=address
 # -Werror
 RELEASEFLAGS = -O2 -DRELEASE
 

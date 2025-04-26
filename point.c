@@ -40,7 +40,7 @@ int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool conn
         }
 
         if (PA->pointCount >= PA->pointCapacity) {
-                uint16_t new_capacity = (PA->pointCapacity == 0) ? 1 : PA->pointCapacity * 2;
+                uint16_t new_capacity = (PA->pointCapacity == 0) ? 1 : PA->pointCapacity << 1;
 
                 if (new_capacity >= UINT16_MAX) {
                         new_capacity = UINT16_MAX;
@@ -67,7 +67,7 @@ int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool conn
 void setPixel(SDL_Renderer* renderer, float x, float y, SDL_Color color, float intensity) {
         color.a *= intensity;
 
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawBlendMode(renderer, (color.a == 255) ? SDL_BLENDMODE_NONE : SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(renderer, unpack_color(color));
         SDL_RenderDrawPointF(renderer, x, y);
 }
@@ -285,16 +285,6 @@ void douglasPeucker(Point* points, int start, int end, double epsilon, bool* kee
         }
 }
 
-float standardDeviation(Point* points, int count, float mean) {
-        float sum = 0;
-        for (int i = 1; i < count - 1; i++) {
-                float d = perpendicularDistance(points[0], points[count - 1], points[i]);
-                sum += pow(d - mean, 2);
-        }
-        return sqrt(sum / (count));
-}
-
-
 float calculateEpsilon(Point* points, int count) {
         float total = 0;
         int valid = 0;
@@ -307,17 +297,21 @@ float calculateEpsilon(Point* points, int count) {
 
         float mean = (valid > 0) ? (total / valid) : 0;
 
-        // Calculate the standard deviation
-        float stddev = standardDeviation(points, count, mean);
+        total = 0;
+        for (int i = 1; i < count - 1; i++) {
+                float d = perpendicularDistance(points[0], points[count - 1], points[i]);
+                total += pow(d - mean, 2);
+        }
 
-        return stddev * 1e-3f;
+        float stddev = sqrt(total / (count));
+        return stddev * 2e-3f;
 }
 
 
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index) {
         if (PA->pointCount == 0) return;
 
-        double epsilon = calculateEpsilon(PA->points, PA->pointCount); // TODO: Make it dynamic
+        double epsilon = calculateEpsilon(PA->points, PA->pointCount);
         bool* keep = calloc(PA->pointCount, sizeof(int));
         douglasPeucker(PA->points, line_start_index, line_end_index, epsilon, keep);
         keep[line_start_index] = 1;
