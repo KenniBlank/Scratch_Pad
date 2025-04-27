@@ -11,6 +11,11 @@
 #include <sys/types.h>
 #include <wchar.h>
 
+
+#define __DEBUG__(msg, ...)\
+        printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
+        fflush(stdout);
+
 #pragma once
 void print_live_usage();
 SDL_Texture* LoadImageAsTexture(const char* path, SDL_Renderer* renderer);

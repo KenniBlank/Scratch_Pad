@@ -1,9 +1,5 @@
 #include "helper.h"
 
-#define __DEBUG__(msg, ...)\
-        printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
-        fflush(stdout);
-
 SDL_Texture* LoadImageAsTexture(const char* path, SDL_Renderer* renderer) {
         SDL_Surface* surface = IMG_Load(path);
         if (!surface) {

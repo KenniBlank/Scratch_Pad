@@ -2,6 +2,7 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
@@ -18,13 +19,6 @@
 #include "helper.h"
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
-#define __DEBUG__(msg, ...)\
-        printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
-        fflush(stdout);
-
-// TODO: Render at this but show in whatever resolution user uses.
-#define VIRTUAL_WIDTH 1900
-#define VIRTUAL_HEIGHT 1080
 
 #define BUFFER_SIZE (uint8_t)100
 
@@ -106,20 +100,10 @@ int main(void) {
         panCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
         erasorCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
-        #ifdef DEBUG
-                SDL_Color
-                        bg_color = {0, 0, 0, 255},
-                        draw_color = {255, 255, 255, 255};
-        #else
-                SDL_Color
-                        bg_color = {15, 20, 25, 255},
-                        draw_color = {255 - bg_color.r, 255 - bg_color.g, 255 - bg_color.b, 255};
-        #endif
-        // Orange:
-        //         color.r = 255;
-        //         color.g = 179;
-        //         color.b = 83;
-
+        SDL_Color
+                ui_bg_color = {35, 35, 41, 255},
+                bg_color = {0, 0, 0, 255},
+                draw_color = {255, 255, 255, 255};
 
         TotalData DATA_INIT_VALUE = {
                 .lines = {
@@ -138,14 +122,52 @@ int main(void) {
                 Data[i] = DATA_INIT_VALUE;
         }
 
-        // This is where all of lines are drawn so that no need to rerender eveything
+        // This is where all of lines are drawn
         SDL_Texture *drawLayer = SDL_CreateTexture(
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
-                window_width, // TODO: 1/8 for UI Elements if certain window_size
+                window_width,
                 window_height
         );
+
+        // Icons
+        SDL_Rect toolLayerRect = {
+                .w = 200,
+                .h = 70,
+                .y = 20,
+                .x = (window_width - toolLayerRect.w) >> 1,
+        };
+
+        // STATIC:
+        SDL_Texture *ToolsLayer = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                toolLayerRect.w,
+                toolLayerRect.h
+        );
+
+        SDL_Texture* penIcon = LoadImageAsTexture("Icons/pen_tool.png", renderer);
+        SDL_Texture* eraserIcon = LoadImageAsTexture("Icons/eraser.png", renderer);
+        SDL_Texture* panIcon = LoadImageAsTexture("Icons/pan_tool.png", renderer);
+
+        SDL_SetRenderTarget(renderer, ToolsLayer);
+        SDL_SetRenderDrawColor(renderer, unpack_color(ui_bg_color));
+        SDL_RenderClear(renderer);
+
+        SDL_Rect penRect = { 15, 10, 50, 50 };
+        SDL_Rect eraserRect = { 75, 10, 50, 50 };
+        SDL_Rect panRect = { 135, 10, 50, 50 };
+
+        SDL_RenderCopy(renderer, penIcon, NULL, &penRect);
+        SDL_RenderCopy(renderer, eraserIcon, NULL, &eraserRect);
+        SDL_RenderCopy(renderer, panIcon, NULL, &panRect);
+        SDL_SetRenderDrawColor(renderer, unpack_color(draw_color));
+        SDL_RenderDrawRect(renderer, &penRect);
+        SDL_RenderDrawRect(renderer, &eraserRect);
+        SDL_RenderDrawRect(renderer, &panRect);
+        SDL_SetRenderTarget(renderer, NULL);
 
         bool rerender = false;
 
@@ -156,6 +178,8 @@ int main(void) {
         uint16_t line_start_index;
 
         while (app_is_running) {
+                handle_cursor_change(Data[0].current_mode);
+
                 while (SDL_PollEvent(&event)) {
                         switch (event.type) {
                                 case SDL_QUIT: app_is_running = false; break;
@@ -173,6 +197,9 @@ int main(void) {
 
                                                 SDL_DestroyTexture(old);
                                                 rerender = true;
+
+                                                // Other:
+                                                toolLayerRect.x = (window_width - toolLayerRect.w) >> 1;
                                         }
                                         break;
                                 case SDL_KEYDOWN:
@@ -194,14 +221,27 @@ int main(void) {
                                 case SDL_MOUSEBUTTONDOWN:
                                         switch (event.button.button) {
                                                 case SDL_BUTTON_LEFT:
-                                                        current_mode = Data->current_mode;
+                                                        if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x, toolLayerRect.y, toolLayerRect.w, toolLayerRect.h)) {
+                                                                if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + eraserRect.x, toolLayerRect.y + eraserRect.y, eraserRect.w, eraserRect.h)) {
+                                                                        Data[0].current_mode = MODE_ERASOR;
+                                                                        break;
+                                                                } else if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + penRect.x, toolLayerRect.y + penRect.y, penRect.w, penRect.h)) {
+                                                                        Data[0].current_mode = MODE_DRAWING;
+                                                                        break;
+                                                                } else if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + panRect.x, toolLayerRect.y + panRect.y, panRect.w, panRect.h)) {
+                                                                        Data[0].current_mode = MODE_PAN;
+                                                                        break;
+                                                                }
+                                                        }
+
+                                                        current_mode = Data[0].current_mode;
                                                         switch (current_mode) {
                                                                 case MODE_DRAWING:
                                                                         addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, true);
                                                                         line_start_index = Data[0].lines.pointCount - 1;
                                                                         break;
                                                                 case MODE_ERASOR: break;
-                                                                default: rerender = true; break;
+                                                                default: break;
                                                         }
                                                         break;
                                         }
@@ -239,8 +279,6 @@ int main(void) {
                         }
                 }
 
-                handle_cursor_change(Data[0].current_mode);
-
                 SDL_SetRenderTarget(renderer, drawLayer);
                 if (rerender) {
                         // Clear Screen
@@ -255,12 +293,11 @@ int main(void) {
 
                 SDL_SetRenderTarget(renderer, NULL);
 
-                // Clear Screen
-                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
-                SDL_RenderClear(renderer);
-
                 // Copy DrawLayers's content to renderer
                 SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
+
+                // Tools:
+                SDL_RenderCopy(renderer, ToolsLayer, NULL, &toolLayerRect);
 
                 SDL_RenderPresent(renderer);
 
@@ -282,6 +319,11 @@ int main(void) {
         SDL_FreeCursor(erasorCursor);
 
         SDL_DestroyTexture(drawLayer);
+        SDL_DestroyTexture(penIcon);
+        SDL_DestroyTexture(panIcon);
+        SDL_DestroyTexture(eraserIcon);
+        SDL_DestroyTexture(ToolsLayer);
+
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
