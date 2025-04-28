@@ -141,12 +141,6 @@ void BetterLine(SDL_Renderer* renderer, float x0, float y0, float x1, float y1, 
         }
 }
 
-void RenderLine(SDL_Renderer* renderer, Point p1, Point p2, Pan pan, SDL_Color color) {
-        if (p1.connected_to_next_point && p2.connected_to_next_point) {
-                BetterLine(renderer, p1.x + pan.x, p1.y + pan.y, p2.x + pan.x, p2.y + pan.y, color);
-        }
-}
-
 Point lerp(Point a, Point b, float t) {
         return (Point) {
                 .x = a.x + (b.x - a.x) * t,
@@ -242,18 +236,26 @@ void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color co
         PA->rendered_till = PA->pointCount;
 }
 
-void RenderLines(SDL_Renderer* renderer, LinesArray* PA, Pan pan, SDL_Color color) {
+void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index) {
         if (PA->pointCount == 0 || PA == NULL) return;
 
         if (PA->rendered_till > PA->pointCount) {
             PA->rendered_till = PA->pointCount;
         }
 
-        while (PA->rendered_till < PA->pointCount - 1) {
-                color.r = 0;
+        SDL_Color color = {
+                .r = 0,
+                .g = 255,
+                .b = 255,
+                .a = 255
+        };
 
-                RenderLine(renderer, PA->points[PA->rendered_till], PA->points[PA->rendered_till + 1], pan, color);
-                PA->rendered_till += 1;
+        uint16_t rendered_till = start_index;
+        while (rendered_till < end_index - 1) {
+                if (PA->points[rendered_till].connected_to_next_point && PA->points[rendered_till + 1].connected_to_next_point) {
+                        BetterLine(renderer, PA->points[rendered_till].x + pan.x, PA->points[rendered_till].y + pan.y, PA->points[rendered_till + 1].x + pan.x, PA->points[rendered_till + 1].y + pan.y, color);
+                }
+                rendered_till += 1;
         }
 }
 

@@ -105,7 +105,7 @@ int main(void) {
                 bg_color = {0, 0, 0, 255},
                 draw_color = {255, 255, 255, 255};
 
-        TotalData DATA_INIT_VALUE = {
+        TotalData Data = {
                 .lines = {
                         .points = NULL,
                         .pointCount = 0,
@@ -116,20 +116,19 @@ int main(void) {
                 .pan.y = 0,
         };
 
-
-        TotalData Data[BUFFER_SIZE];
-        for (uint8_t i = 0; i < BUFFER_SIZE; i++) {
-                Data[i] = DATA_INIT_VALUE;
+        // This is where all of lines are drawn
+        SDL_Texture *drawLayers[BUFFER_SIZE];
+        for (int i = 0; i < BUFFER_SIZE; i++) {
+                drawLayers[0] = SDL_CreateTexture(
+                        renderer,
+                        SDL_PIXELFORMAT_RGBA8888,
+                        SDL_TEXTUREACCESS_TARGET,
+                        window_width,
+                        window_height
+                );
         }
 
-        // This is where all of lines are drawn
-        SDL_Texture *drawLayer = SDL_CreateTexture(
-                renderer,
-                SDL_PIXELFORMAT_RGBA8888,
-                SDL_TEXTUREACCESS_TARGET,
-                window_width,
-                window_height
-        );
+        SDL_Texture *drawLayer = drawLayers[0];
 
         // Icons
         SDL_Rect toolLayerRect = {
@@ -169,16 +168,16 @@ int main(void) {
         SDL_RenderDrawRect(renderer, &panRect);
         SDL_SetRenderTarget(renderer, NULL);
 
-        bool rerender = false;
+        uint8_t rerender = 0;
 
-        Data[0].current_mode = MODE_DRAWING;
+        Data.current_mode = MODE_DRAWING;
 
         SDL_Event event;
         enum Mode current_mode;
         uint16_t line_start_index;
 
         while (app_is_running) {
-                handle_cursor_change(Data[0].current_mode);
+                handle_cursor_change(Data.current_mode);
 
                 while (SDL_PollEvent(&event)) {
                         switch (event.type) {
@@ -196,7 +195,7 @@ int main(void) {
                                                 SDL_SetRenderTarget(renderer, NULL);
 
                                                 SDL_DestroyTexture(old);
-                                                rerender = true;
+                                                rerender = 1;
 
                                                 // Other:
                                                 toolLayerRect.x = (window_width - toolLayerRect.w) >> 1;
@@ -205,11 +204,11 @@ int main(void) {
                                 case SDL_KEYDOWN:
                                         switch (event.key.keysym.sym) {
                                                 case SDLK_ESCAPE: app_is_running = false; break;
-                                                case SDLK_n: Data[0].current_mode = MODE_NONE; break;
-                                                case SDLK_t: Data[0].current_mode = MODE_TYPING; break;
-                                                case SDLK_d: Data[0].current_mode = MODE_DRAWING; break;
-                                                case SDLK_p: Data[0].current_mode = MODE_PAN; break;
-                                                case SDLK_e: Data[0].current_mode = MODE_ERASOR; break;
+                                                case SDLK_p: Data.current_mode = MODE_PAN; break;
+                                                case SDLK_n: Data.current_mode = MODE_NONE; break;
+                                                case SDLK_e: Data.current_mode = MODE_ERASOR; break;
+                                                case SDLK_t: Data.current_mode = MODE_TYPING; break;
+                                                case SDLK_d: Data.current_mode = MODE_DRAWING; break;
                                         }
 
                                         if (event.key.keysym.mod & KMOD_LCTRL) {
@@ -223,22 +222,22 @@ int main(void) {
                                                 case SDL_BUTTON_LEFT:
                                                         if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x, toolLayerRect.y, toolLayerRect.w, toolLayerRect.h)) {
                                                                 if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + eraserRect.x, toolLayerRect.y + eraserRect.y, eraserRect.w, eraserRect.h)) {
-                                                                        Data[0].current_mode = MODE_ERASOR;
+                                                                        Data.current_mode = MODE_ERASOR;
                                                                         break;
                                                                 } else if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + penRect.x, toolLayerRect.y + penRect.y, penRect.w, penRect.h)) {
-                                                                        Data[0].current_mode = MODE_DRAWING;
+                                                                        Data.current_mode = MODE_DRAWING;
                                                                         break;
                                                                 } else if (CollisionDetection(event.button.x, event.button.y, 1, 1, toolLayerRect.x + panRect.x, toolLayerRect.y + panRect.y, panRect.w, panRect.h)) {
-                                                                        Data[0].current_mode = MODE_PAN;
+                                                                        Data.current_mode = MODE_PAN;
                                                                         break;
                                                                 }
                                                         }
 
-                                                        current_mode = Data[0].current_mode;
+                                                        current_mode = Data.current_mode;
                                                         switch (current_mode) {
                                                                 case MODE_DRAWING:
-                                                                        addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, true);
-                                                                        line_start_index = Data[0].lines.pointCount - 1;
+                                                                        addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
+                                                                        line_start_index = Data.lines.pointCount - 1;
                                                                         break;
                                                                 case MODE_ERASOR: break;
                                                                 default: break;
@@ -251,10 +250,10 @@ int main(void) {
                                                 case SDL_BUTTON_LEFT:
                                                         switch (current_mode) {
                                                                 case MODE_DRAWING: {
-                                                                                addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, true);
-                                                                                OptimizeLine(&Data[0].lines, line_start_index, Data[0].lines.pointCount - 1);
-                                                                                addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, false);
-                                                                                rerender = true;
+                                                                                addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
+                                                                                OptimizeLine(&Data.lines, line_start_index, Data.lines.pointCount - 1);
+                                                                                addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, false);
+                                                                                rerender = 1;
                                                                                 break;
                                                                         }
                                                                 default: break;
@@ -267,11 +266,11 @@ int main(void) {
                                         switch (current_mode) {
                                                 case MODE_NONE: break;
                                                 case MODE_PAN:
-                                                        PanPoints(&Data[0].pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
-                                                        rerender = true;
+                                                        PanPoints(&Data.pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
+                                                        rerender = 1;
                                                         break;
                                                 case MODE_DRAWING:
-                                                        addPoint(&Data[0].lines, (float) (event.button.x  - Data[0].pan.x), (float) (event.button.y  - Data[0].pan.y), LINE_THICKNESS, true);
+                                                        addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
                                                         break;
                                                 default: break;
                                         }
@@ -280,17 +279,20 @@ int main(void) {
                 }
 
                 SDL_SetRenderTarget(renderer, drawLayer);
-                if (rerender) {
-                        // Clear Screen
-                        SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
-                        SDL_RenderClear(renderer);
+                switch (rerender) {
+                        case 0:
+                                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount);
+                                break;
+                        case 1:
+                                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
+                                SDL_RenderClear(renderer);
 
-                        ReRenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
-                        rerender = false;
-                } else {
-                        RenderLines(renderer, &Data[0].lines, Data[0].pan, draw_color);
+                                ReRenderLines(renderer, &Data.lines, Data.pan, draw_color);
+                                rerender = 0;
+                                break;
+                        default:
+                                break;
                 }
-
                 SDL_SetRenderTarget(renderer, NULL);
 
                 // Copy DrawLayers's content to renderer
@@ -307,10 +309,8 @@ int main(void) {
                 #endif
         }
 
-        for (size_t i = 0; i < BUFFER_SIZE; i++) {
-                if (Data[i].lines.points != NULL) {
-                        free(Data[i].lines.points);
-                }
+        if (Data.lines.points != NULL) {
+                free(Data.lines.points);
         }
 
         SDL_FreeCursor(arrowCursor);
@@ -318,7 +318,10 @@ int main(void) {
         SDL_FreeCursor(panCursor);
         SDL_FreeCursor(erasorCursor);
 
-        SDL_DestroyTexture(drawLayer);
+        for (int i = 0; i < BUFFER_SIZE; i++) {
+                SDL_DestroyTexture(drawLayers[i]);
+        }
+
         SDL_DestroyTexture(penIcon);
         SDL_DestroyTexture(panIcon);
         SDL_DestroyTexture(eraserIcon);
