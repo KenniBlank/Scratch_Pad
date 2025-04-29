@@ -228,7 +228,6 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
         }
 }
 
-
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
                 __RenderLines__(renderer, PA, pan, 0, PA->pointCount - 1, color);
@@ -236,24 +235,21 @@ void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color co
         PA->rendered_till = PA->pointCount;
 }
 
-void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index) {
-        if (PA->pointCount == 0 || PA == NULL) return;
-
-        if (PA->rendered_till > PA->pointCount) {
-            PA->rendered_till = PA->pointCount;
+void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index, SDL_Color color) {
+        if (PA == NULL || PA->pointCount == 0){
+                return;
         }
 
-        SDL_Color color = {
-                .r = 0,
-                .g = 255,
-                .b = 255,
-                .a = 255
-        };
-
+        SDL_SetRenderDrawColor(renderer, unpack_color(color));
         uint16_t rendered_till = start_index;
         while (rendered_till < end_index - 1) {
                 if (PA->points[rendered_till].connected_to_next_point && PA->points[rendered_till + 1].connected_to_next_point) {
-                        BetterLine(renderer, PA->points[rendered_till].x + pan.x, PA->points[rendered_till].y + pan.y, PA->points[rendered_till + 1].x + pan.x, PA->points[rendered_till + 1].y + pan.y, color);
+                        SDL_RenderDrawLineF(renderer,
+                                (PA->points[rendered_till].x + pan.x),
+                                (PA->points[rendered_till].y + pan.y),
+                                (PA->points[rendered_till + 1].x + pan.x),
+                                (PA->points[rendered_till + 1].y + pan.y)
+                        );
                 }
                 rendered_till += 1;
         }

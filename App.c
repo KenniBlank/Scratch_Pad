@@ -281,7 +281,7 @@ int main(void) {
                 SDL_SetRenderTarget(renderer, drawLayer);
                 switch (rerender) {
                         case 0:
-                                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount);
+                                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 255, .b = 255, .a = 255 });
                                 break;
                         case 1:
                                 SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
