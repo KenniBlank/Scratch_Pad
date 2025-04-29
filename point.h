@@ -25,8 +25,9 @@ typedef struct {
         uint16_t rendered_till;
 } LinesArray;
 
-int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool connected_to_prev_line);
-void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
-void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index, SDL_Color color);
 void PanPoints(Pan* pan, float xrel, float yrel);
+void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index);
+int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool connected_to_prev_line);
+void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index, SDL_Color color);
+void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t line_start_index, uint16_t line_end_index, SDL_Color color); // You have to manually update the rendered_till variable for this...

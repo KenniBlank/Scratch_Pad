@@ -188,6 +188,9 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
 
 
 void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t line_start_index, uint16_t line_end_index, SDL_Color color) {
+        if (line_end_index == line_start_index) {
+                return;
+        }
         Point arr[4];
         int temp = 0;
 

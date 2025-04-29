@@ -9,6 +9,7 @@
 #include <SDL2/SDL_video.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,8 +20,6 @@
 #include "helper.h"
 
 #define unpack_color(color) (color.r), (color.g), (color.b), (color.a)
-
-#define BUFFER_SIZE (uint8_t)100
 
 #ifdef DEBUG
     #define SAVE_LOCATION "Images/"
@@ -49,6 +48,13 @@ typedef struct {
         enum Mode current_mode;
 } TotalData;
 
+typedef struct {
+        SDL_Texture **data;
+        size_t capacity;
+        size_t count;
+} TextureArray;
+
+
 // Global Variables:
 SDL_Cursor* arrowCursor;
 SDL_Cursor* crosshairCursor;
@@ -62,6 +68,19 @@ void handle_cursor_change(enum Mode current_mode) {
                 case MODE_PAN: SDL_SetCursor(panCursor); break;
                 case MODE_ERASOR: SDL_SetCursor(erasorCursor); break;
         }
+}
+
+void pushTexture(TextureArray *arr, SDL_Texture *tex) {
+        if (arr->count >= arr->capacity) {
+                arr->capacity *= 2;
+                arr->data = realloc(arr->data, arr->capacity * sizeof(SDL_Texture *));
+                if (!arr->data) {
+                perror("realloc failed");
+                exit(1);
+                }
+        }
+        arr->data[arr->count] = tex;
+        arr->count++;
 }
 
 int main(void) {
@@ -117,18 +136,21 @@ int main(void) {
         };
 
         // This is where all of lines are drawn
-        SDL_Texture *drawLayers[BUFFER_SIZE];
-        for (int i = 0; i < BUFFER_SIZE; i++) {
-                drawLayers[0] = SDL_CreateTexture(
-                        renderer,
-                        SDL_PIXELFORMAT_RGBA8888,
-                        SDL_TEXTUREACCESS_TARGET,
-                        window_width,
-                        window_height
-                );
-        }
+        TextureArray drawLayers = {
+                .data = malloc(sizeof(SDL_Texture *)),
+                .capacity = 1,
+                .count = 0
+        };
 
-        SDL_Texture *drawLayer = drawLayers[0];
+        drawLayers.data[0] = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                window_width,
+                window_height
+        );
+
+        SDL_Texture *drawLayer = drawLayers.data[drawLayers.count];
 
         // Icons
         SDL_Rect toolLayerRect = {
@@ -175,6 +197,7 @@ int main(void) {
         SDL_Event event;
         enum Mode current_mode;
         uint16_t line_start_index;
+        bool newLineAdded = false;
 
         while (app_is_running) {
                 handle_cursor_change(Data.current_mode);
@@ -250,12 +273,13 @@ int main(void) {
                                                 case SDL_BUTTON_LEFT:
                                                         switch (current_mode) {
                                                                 case MODE_DRAWING: {
-                                                                                addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
-                                                                                OptimizeLine(&Data.lines, line_start_index, Data.lines.pointCount - 1);
-                                                                                addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, false);
-                                                                                rerender = 1;
-                                                                                break;
-                                                                        }
+                                                                        addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
+                                                                        OptimizeLine(&Data.lines, line_start_index, Data.lines.pointCount - 1);
+                                                                        addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, false);
+                                                                        rerender = 0;
+                                                                        newLineAdded = true;
+                                                                        break;
+                                                                }
                                                                 default: break;
                                                         }
                                                         current_mode = MODE_NONE;
@@ -278,20 +302,49 @@ int main(void) {
                         }
                 }
 
-                SDL_SetRenderTarget(renderer, drawLayer);
                 switch (rerender) {
-                        case 0:
-                                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 255, .b = 255, .a = 255 });
+                        case 0: { // Render New Lines to draw Layer, save it for undo/redo if line drawn
+                                if (Data.lines.points == NULL || Data.lines.pointCount == 0) {
+                                        break;
+                                }
+
+                                SDL_SetRenderTarget(renderer, drawLayer);
+                                __RenderLines__(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount - 1, draw_color);
+                                Data.lines.rendered_till = Data.lines.pointCount - 1;
+
+                                // If line ended, save for future undo/redo action
+                                if (newLineAdded) {
+                                        SDL_Texture *newLayer = SDL_CreateTexture(
+                                                renderer,
+                                                SDL_PIXELFORMAT_RGBA8888,
+                                                SDL_TEXTUREACCESS_TARGET,
+                                                window_width,
+                                                window_height
+                                        );
+                                        if (!newLayer) {
+                                                fprintf(stderr, "Failed to create texture: %s\n", SDL_GetError());
+                                                break;
+                                        }
+
+                                        SDL_SetRenderTarget(renderer, newLayer);
+                                        SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
+
+                                        pushTexture(&drawLayers, newLayer);
+                                        drawLayer = newLayer;
+                                        newLineAdded = false;
+                                }
                                 break;
-                        case 1:
+                        }
+                        case 1: // Rerender Everything
+                                SDL_SetRenderTarget(renderer, drawLayer);
+
                                 SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
                                 SDL_RenderClear(renderer);
 
                                 ReRenderLines(renderer, &Data.lines, Data.pan, draw_color);
                                 rerender = 0;
                                 break;
-                        default:
-                                break;
+                        default: break;
                 }
                 SDL_SetRenderTarget(renderer, NULL);
 
@@ -301,6 +354,8 @@ int main(void) {
                 // Tools:
                 SDL_RenderCopy(renderer, ToolsLayer, NULL, &toolLayerRect);
 
+                // New line provided by usr
+                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 255, .b = 255, .a = 255 });
                 SDL_RenderPresent(renderer);
 
                 #ifdef DEBUG
@@ -318,9 +373,12 @@ int main(void) {
         SDL_FreeCursor(panCursor);
         SDL_FreeCursor(erasorCursor);
 
-        for (int i = 0; i < BUFFER_SIZE; i++) {
-                SDL_DestroyTexture(drawLayers[i]);
+        for (size_t i = 0; i < drawLayers.count; i++) {
+                if (drawLayers.data[i]) {
+                        SDL_DestroyTexture(drawLayers.data[i]);
+                }
         }
+        free(drawLayers.data);
 
         SDL_DestroyTexture(penIcon);
         SDL_DestroyTexture(panIcon);
