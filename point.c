@@ -229,13 +229,14 @@ void __RenderLines__(SDL_Renderer* renderer, LinesArray *PA, Pan pan, uint16_t l
                 int steps = estimateSteps(arr[0], arr[1], arr[2], arr[3]);
                 renderBezierCurve(renderer, arr[0], arr[1], arr[2], arr[3], pan, steps, color);
         }
+
+        PA->rendered_till = PA->pointCount - 1;
 }
 
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color) {
         if (PA->pointCount != 0) {
                 __RenderLines__(renderer, PA, pan, 0, PA->pointCount - 1, color);
         }
-        PA->rendered_till = PA->pointCount;
 }
 
 void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_index, uint16_t end_index, SDL_Color color) {
@@ -247,11 +248,11 @@ void RenderLine(SDL_Renderer* renderer, LinesArray* PA, Pan pan, uint16_t start_
         uint16_t rendered_till = start_index;
         while (rendered_till < end_index - 1) {
                 if (PA->points[rendered_till].connected_to_next_point && PA->points[rendered_till + 1].connected_to_next_point) {
-                        SDL_RenderDrawLineF(renderer,
-                                (PA->points[rendered_till].x + pan.x),
-                                (PA->points[rendered_till].y + pan.y),
-                                (PA->points[rendered_till + 1].x + pan.x),
-                                (PA->points[rendered_till + 1].y + pan.y)
+                        SDL_RenderDrawLine(renderer,
+                                (int) (PA->points[rendered_till].x + pan.x),
+                                (int) (PA->points[rendered_till].y + pan.y),
+                                (int) (PA->points[rendered_till + 1].x + pan.x),
+                                (int) (PA->points[rendered_till + 1].y + pan.y)
                         );
                 }
                 rendered_till += 1;

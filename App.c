@@ -1,4 +1,5 @@
 #include <SDL2/SDL_config_unix.h>
+#include <SDL2/SDL_error.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_pixels.h>
@@ -190,7 +191,7 @@ int main(void) {
         SDL_RenderDrawRect(renderer, &panRect);
         SDL_SetRenderTarget(renderer, NULL);
 
-        uint8_t rerender = 0;
+        bool rerender = true;
 
         Data.current_mode = MODE_DRAWING;
 
@@ -212,13 +213,11 @@ int main(void) {
 
                                                 drawLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, window_width, window_height);
 
-                                                // Copy content from old layer to new one
+                                                // Copy content from old layer to new one, and destroy previous one
                                                 SDL_SetRenderTarget(renderer, drawLayer);
                                                 SDL_RenderCopy(renderer, old, NULL, NULL);
                                                 SDL_SetRenderTarget(renderer, NULL);
-
                                                 SDL_DestroyTexture(old);
-                                                rerender = 1;
 
                                                 // Other:
                                                 toolLayerRect.x = (window_width - toolLayerRect.w) >> 1;
@@ -273,10 +272,7 @@ int main(void) {
                                                 case SDL_BUTTON_LEFT:
                                                         switch (current_mode) {
                                                                 case MODE_DRAWING: {
-                                                                        addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
-                                                                        OptimizeLine(&Data.lines, line_start_index, Data.lines.pointCount - 1);
                                                                         addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, false);
-                                                                        rerender = 0;
                                                                         newLineAdded = true;
                                                                         break;
                                                                 }
@@ -291,7 +287,7 @@ int main(void) {
                                                 case MODE_NONE: break;
                                                 case MODE_PAN:
                                                         PanPoints(&Data.pan, (double) (event.motion.xrel), (double) (event.motion.yrel));
-                                                        rerender = 1;
+                                                        rerender = true;
                                                         break;
                                                 case MODE_DRAWING:
                                                         addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
@@ -302,51 +298,49 @@ int main(void) {
                         }
                 }
 
-                switch (rerender) {
-                        case 0: { // Render New Lines to draw Layer, save it for undo/redo if line drawn
-                                if (Data.lines.points == NULL || Data.lines.pointCount == 0) {
-                                        break;
-                                }
+                if (rerender) {
+                        SDL_SetRenderTarget(renderer, drawLayer);
 
-                                SDL_SetRenderTarget(renderer, drawLayer);
-                                __RenderLines__(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount - 1, draw_color);
-                                Data.lines.rendered_till = Data.lines.pointCount - 1;
+                        SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
+                        SDL_RenderClear(renderer);
 
-                                // If line ended, save for future undo/redo action
-                                if (newLineAdded) {
-                                        SDL_Texture *newLayer = SDL_CreateTexture(
-                                                renderer,
-                                                SDL_PIXELFORMAT_RGBA8888,
-                                                SDL_TEXTUREACCESS_TARGET,
-                                                window_width,
-                                                window_height
-                                        );
-                                        if (!newLayer) {
-                                                fprintf(stderr, "Failed to create texture: %s\n", SDL_GetError());
-                                                break;
-                                        }
+                        ReRenderLines(renderer, &Data.lines, Data.pan, draw_color);
+                        SDL_SetRenderTarget(renderer, NULL);
+                        rerender = false;
+                }
 
-                                        SDL_SetRenderTarget(renderer, newLayer);
-                                        SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
+                // If new line ended, save for future undo/redo action
+                if (newLineAdded) {
+                        // Blueprint IG:
+                        // 1. Copy all previous strokes from drawLayer to newLayer
+                        // 2. Render new strokes to new layer
+                        // 3. Save new layer as drawLayer
 
-                                        pushTexture(&drawLayers, newLayer);
-                                        drawLayer = newLayer;
-                                        newLineAdded = false;
-                                }
+                        OptimizeLine(&Data.lines, line_start_index, Data.lines.pointCount - 1);
+                        SDL_Texture *newLayer = SDL_CreateTexture(
+                                renderer,
+                                SDL_PIXELFORMAT_RGBA8888,
+                                SDL_TEXTUREACCESS_TARGET,
+                                window_width,
+                                window_height
+                        );
+                        if (!newLayer) {
+                                fprintf(stdout, "Failed to create texture: %s\n", SDL_GetError());
                                 break;
                         }
-                        case 1: // Rerender Everything
-                                SDL_SetRenderTarget(renderer, drawLayer);
 
-                                SDL_SetRenderDrawColor(renderer, unpack_color(bg_color));
-                                SDL_RenderClear(renderer);
+                        SDL_SetRenderTarget(renderer, newLayer);
+                        SDL_RenderCopy(renderer, drawLayers.data[drawLayers.count - 1], NULL, NULL);
 
-                                ReRenderLines(renderer, &Data.lines, Data.pan, draw_color);
-                                rerender = 0;
-                                break;
-                        default: break;
+                        __RenderLines__(renderer, &Data.lines, Data.pan, line_start_index, Data.lines.pointCount - 1, draw_color);
+
+                        SDL_SetRenderTarget(renderer, NULL);
+
+                        // Save newTexture:
+                        pushTexture(&drawLayers, newLayer);
+                        drawLayer = drawLayers.data[drawLayers.count - 1];
+                        newLineAdded = false;
                 }
-                SDL_SetRenderTarget(renderer, NULL);
 
                 // Copy DrawLayers's content to renderer
                 SDL_RenderCopy(renderer, drawLayer, NULL, NULL);
@@ -356,6 +350,7 @@ int main(void) {
 
                 // New line provided by usr
                 RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 255, .b = 255, .a = 255 });
+
                 SDL_RenderPresent(renderer);
 
                 #ifdef DEBUG
