@@ -138,8 +138,8 @@ int main(void) {
 
         // This is where all of lines are drawn
         TextureArray drawLayers = {
-                .data = malloc(sizeof(SDL_Texture *)),
-                .capacity = 1,
+                .data = malloc(2 * sizeof(SDL_Texture *)),
+                .capacity = 2,
                 .count = 0
         };
 
@@ -150,8 +150,17 @@ int main(void) {
                 window_width,
                 window_height
         );
+        drawLayers.data[1] = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                window_width,
+                window_height
+        );
+        drawLayers.count += 2;
 
-        SDL_Texture *drawLayer = drawLayers.data[drawLayers.count];
+        size_t current_drawLayers_index = drawLayers.count - 1;
+        SDL_Texture *drawLayer = drawLayers.data[current_drawLayers_index];
 
         // Icons
         SDL_Rect toolLayerRect = {
@@ -201,8 +210,9 @@ int main(void) {
         bool newLineAdded = false;
 
         while (app_is_running) {
-                handle_cursor_change(Data.current_mode);
+                drawLayer = drawLayers.data[current_drawLayers_index];
 
+                handle_cursor_change(Data.current_mode);
                 while (SDL_PollEvent(&event)) {
                         switch (event.type) {
                                 case SDL_QUIT: app_is_running = false; break;
@@ -213,6 +223,7 @@ int main(void) {
                                                 SDL_Texture* old = drawLayer;
 
                                                 drawLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, window_width, window_height);
+                                                SDL_SetTextureBlendMode(drawLayer, SDL_BLENDMODE_BLEND);
 
                                                 // Copy content from old layer to new one, and destroy previous one
                                                 SDL_SetRenderTarget(renderer, drawLayer);
@@ -235,8 +246,26 @@ int main(void) {
                                         }
 
                                         if (event.key.keysym.mod & KMOD_LCTRL) {
-                                                if (event.key.keysym.sym == SDLK_s) {
-                                                        SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
+                                                switch (event.key.keysym.sym) {
+                                                        case SDLK_s:
+                                                                SaveRendererAsImage(renderer, "__image__", SAVE_LOCATION);
+                                                                break;
+                                                        case SDLK_z:
+                                                                // Undo
+                                                                if (current_drawLayers_index > 0) {
+                                                                        current_drawLayers_index--;
+                                                                } else {
+                                                                        current_drawLayers_index = 0;
+                                                                }
+                                                                break;
+                                                        case SDLK_y:
+                                                                // Redo
+                                                                if (current_drawLayers_index + 1 >= drawLayers.count) {
+                                                                        current_drawLayers_index = drawLayers.count - 1;
+                                                                } else {
+                                                                        current_drawLayers_index++;
+                                                                }
+                                                                break;
                                                 }
                                         }
                                         break;
@@ -331,15 +360,24 @@ int main(void) {
                         }
 
                         SDL_SetRenderTarget(renderer, newLayer);
-                        SDL_RenderCopy(renderer, drawLayers.data[drawLayers.count - 1], NULL, NULL);
+                        SDL_RenderCopy(renderer, drawLayers.data[current_drawLayers_index], NULL, NULL);
 
                         __RenderLines__(renderer, &Data.lines, Data.pan, line_start_index, Data.lines.pointCount - 1, draw_color);
 
-                        SDL_SetRenderTarget(renderer, NULL);
+                        if (current_drawLayers_index < drawLayers.count - 1) {
+                                // Delete all texture after that index:
+                                for (size_t i = current_drawLayers_index + 1; i < drawLayers.count; i++) {
+                                        if (drawLayers.data[i]) {
+                                                SDL_DestroyTexture(drawLayers.data[i]);
+                                        }
+                                }
+                                drawLayers.count = current_drawLayers_index + 1;
+                        }
 
+                        SDL_SetRenderTarget(renderer, NULL);
                         // Save newTexture:
                         pushTexture(&drawLayers, newLayer);
-                        drawLayer = drawLayers.data[drawLayers.count - 1];
+                        current_drawLayers_index = drawLayers.count - 1;
                         newLineAdded = false;
                 }
 
