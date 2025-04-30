@@ -2,6 +2,10 @@
 
 Scratch Pad is an application in which you can sketch your ideas roughly. It is created in C with sdl2 library.
 
+Images:
+
+![Hello World](Images/hello_world.png)
+
 This is the better repository of my [scratch-pad](https://github.com/KenniBlank/scratch-pad) application.
 
 # TODO:

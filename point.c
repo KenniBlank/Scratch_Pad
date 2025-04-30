@@ -190,8 +190,8 @@ int estimateSteps(Point p0, Point p1, Point p2, Point p3) {
         float deviationFactor = maxDeviation / length;
 
         // Clamp steps to sane values
-        int steps = (int)(50 + deviationFactor * 200); // from 50 (flat) to 200 (curvy)
-        if (steps < 50) steps = 50;
+        int steps = (int)(70 + deviationFactor * 200); // from 70 (flat) to 200 (curvy)
+        if (steps < 70) steps = 70;
         if (steps > 200) steps = 200;
 
         return steps;

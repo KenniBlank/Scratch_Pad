@@ -350,7 +350,7 @@ int main(void) {
                 SDL_RenderCopy(renderer, ToolsLayer, NULL, &toolLayerRect);
 
                 // New line provided by usr
-                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 255, .g = 255, .b = 255, .a = 255 });
+                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 100, .b = 100, .a = 150 });
 
                 SDL_RenderPresent(renderer);
 
