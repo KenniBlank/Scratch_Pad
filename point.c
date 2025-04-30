@@ -19,6 +19,12 @@
 #define fpart(x) ((x) - (int)(x))
 #define rfpart(x) (1.0f - fpart(x))
 
+static int SCREEN_WIDTH, SCREEN_HEIGHT;
+void set_window_dimensions(int win_width, int win_height) {
+        SCREEN_WIDTH = win_width;
+        SCREEN_HEIGHT = win_height;
+}
+
 double perpendicularDistance(Point pt, Point lineStart, Point lineEnd) {
         double dx = lineEnd.x - lineStart.x;
         double dy = lineEnd.y - lineStart.y;
@@ -74,6 +80,11 @@ void setPixel(SDL_Renderer* renderer, float x, float y, SDL_Color color, float i
 
 // Wu's Algorithm: Wikipedia
 void BetterLine(SDL_Renderer* renderer, float x0, float y0, float x1, float y1, SDL_Color color) {
+        if ((x0 < 0 && x1 < 0) || (x0 > SCREEN_WIDTH && x1 > SCREEN_WIDTH) ||
+            (y0 < 0 && y1 < 0) || (y0 > SCREEN_HEIGHT && y1 > SCREEN_HEIGHT)) {
+                return;  // Line is outside the screen
+        }
+
         bool steep = fabs(y1 - y0) > fabs(x1 - x0);
 
         // Swap if the line is steep

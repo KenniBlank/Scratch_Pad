@@ -209,6 +209,7 @@ int main(void) {
                                 case SDL_WINDOWEVENT:
                                         if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                                                 SDL_GetWindowSize(window, &window_width, &window_height);
+                                                set_window_dimensions(window_width, window_height);
                                                 SDL_Texture* old = drawLayer;
 
                                                 drawLayer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, window_width, window_height);
@@ -349,7 +350,7 @@ int main(void) {
                 SDL_RenderCopy(renderer, ToolsLayer, NULL, &toolLayerRect);
 
                 // New line provided by usr
-                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 0, .g = 255, .b = 255, .a = 255 });
+                RenderLine(renderer, &Data.lines, Data.pan, Data.lines.rendered_till, Data.lines.pointCount, (SDL_Color) { .r = 255, .g = 255, .b = 255, .a = 255 });
 
                 SDL_RenderPresent(renderer);
 

@@ -26,6 +26,7 @@ typedef struct {
 } LinesArray;
 
 void PanPoints(Pan* pan, float xrel, float yrel);
+void set_window_dimensions(int win_width, int win_height);
 void ReRenderLines(SDL_Renderer* renderer, LinesArray *PA, Pan pan, SDL_Color color);
 void OptimizeLine(LinesArray* PA, uint16_t line_start_index, uint16_t line_end_index);
 int addPoint(LinesArray* PA, float x, float y, uint8_t line_thickness, bool connected_to_prev_line);
