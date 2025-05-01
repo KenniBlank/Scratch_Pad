@@ -21,3 +21,4 @@ void print_live_usage();
 SDL_Texture* LoadImageAsTexture(const char* path, SDL_Renderer* renderer);
 void SaveRendererAsImage(SDL_Renderer *renderer, char *Suffix, char *Location);
 bool CollisionDetection(uint16_t x1, uint16_t y1, uint16_t w1, uint16_t h1, uint16_t x2, uint16_t y2, uint16_t w2, uint16_t h2);
+SDL_Cursor* createCursorFromPNG(const char* filename, uint8_t width, uint8_t height);

@@ -1,4 +1,41 @@
 #include "helper.h"
+#include <SDL2/SDL_mouse.h>
+#include <stdint.h>
+#include <sys/types.h>
+
+SDL_Cursor* createCursorFromPNG(const char* filename, uint8_t width, uint8_t height) {
+        SDL_Surface* original = IMG_Load(filename);
+        if (!original) {
+                SDL_Log("Failed to load PNG: %s", IMG_GetError());
+                return NULL;
+        }
+
+        // Create a surface with the desired size and same pixel format
+        SDL_Surface* resized = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, original->format->format);
+        if (!resized) {
+                SDL_Log("Failed to create resized surface: %s", SDL_GetError());
+                SDL_FreeSurface(original);
+                return NULL;
+        }
+
+        // Scale original into resized
+        if (SDL_BlitScaled(original, NULL, resized, NULL) != 0) {
+                SDL_Log("Failed to scale surface: %s", SDL_GetError());
+                SDL_FreeSurface(original);
+                SDL_FreeSurface(resized);
+                return NULL;
+        }
+
+        SDL_FreeSurface(original);
+
+        SDL_Cursor* cursor = SDL_CreateColorCursor(resized, width / 2, height / 2);
+        if (!cursor) {
+                SDL_Log("Failed to create cursor: %s", SDL_GetError());
+        }
+
+        SDL_FreeSurface(resized);
+        return cursor;
+}
 
 SDL_Texture* LoadImageAsTexture(const char* path, SDL_Renderer* renderer) {
         SDL_Surface* surface = IMG_Load(path);

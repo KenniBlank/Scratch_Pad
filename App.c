@@ -118,7 +118,7 @@ int main(void) {
         arrowCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
         crosshairCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
         panCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-        erasorCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+        erasorCursor = createCursorFromPNG("Icons/eraser_cursor.png", 16, 16);
 
         SDL_Color
                 ui_bg_color = {35, 35, 41, 255},
