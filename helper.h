@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <wchar.h>
 
-
 #define __DEBUG__(msg, ...)\
         printf("Debug at line %d: " msg "\n", __LINE__, ##__VA_ARGS__);\
         fflush(stdout);

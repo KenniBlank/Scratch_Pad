@@ -108,7 +108,8 @@ int main(void) {
                 SDL_Renderer* renderer = SDL_CreateRenderer(
                         window,
                         -1,
-                        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE
+                        // Note: Don't use SDL_RENDERER_ACCELERATED: Calculation from CPU makes lines much better
+                        SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE // | SDL_RENDERER_ACCELERATED
                 );
         #endif
 
@@ -291,7 +292,6 @@ int main(void) {
                                                                         addPoint(&Data.lines, (float) (event.button.x  - Data.pan.x), (float) (event.button.y  - Data.pan.y), LINE_THICKNESS, true);
                                                                         line_start_index = Data.lines.pointCount - 1;
                                                                         break;
-                                                                case MODE_ERASOR: break;
                                                                 default: break;
                                                         }
                                                         break;

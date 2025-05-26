@@ -13,7 +13,7 @@ This is the better repository of my [scratch-pad](https://github.com/KenniBlank/
 - [ ] Curve Fitting
 - [ ] Rough Rendering
 - [ ] Deadzone technique, inertia, averaging
-- [ ] Cubic Bezier to smoothen line
+- [X] Cubic Bezier to smoothen line
 
 ## Notes:
 
@@ -53,7 +53,7 @@ General:
 - Avoid/DON'T use strings
 
 
-## Ramer DouglasPeucker Algorithm
+- Ramer DouglasPeucker Algorithm
 ```
 function DouglasPeucker(PointList, epsilon):
     start = PointList[0]

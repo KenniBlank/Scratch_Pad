@@ -2,7 +2,7 @@ CC = gcc
 
 CFLAGS = -std=gnu2x -Wall -Wextra -Wshadow
 # -fstack-protector-all
-LIBS = -lSDL2 -lm -lSDL2_image -lSDL2_ttf
+LIBS = -lSDL2 -lm -lSDL2_image -lSDL2_ttf -lSDL2_gfx
 # -lpthread
 
 DEBUGFLAGS = -g -DDEBUG
